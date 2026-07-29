@@ -1,6 +1,6 @@
-# TJ Undulation Analyzer (מנתח פיתולי צמתי ZO-1)
+# TJ Undulation Analyzer (מנתח פיתולי דפנות וצמתי תאים)
 
-כלי אינטראקטיבי מתקדם מבוסס דפדפן לכימות וניתוח של פיתולי צמתי תא הדוקים (Tight Junction Undulation Ratio) בתמונות מיקרוסקופיה פלואורסצנטית של ZO-1.
+כלי אינטראקטיבי מתקדם מבוסס דפדפן לכימות וניתוח של פיתולי צמתי תא הדוקים (Tight Junction Undulation Ratio) בתמונות מיקרוסקופיה פלואורסצנטית של צביעת דפנות (כגון ZO-1, Occludin, Phalloidin וכדומה).
 
 הכלי מודד את היחס בין אורך הדופן בפועל (Actual Boundary Path Length) לבין המרחק הישר בין הצמתים התלת-תאיים הקצוותיים שלה (Straight-line Distance).
 

@@ -93,7 +93,7 @@
 <div id="app">
   <header>
     <h1>TJ Undulation <span>Analyzer</span></h1>
-    <div class="sub">כימות פיתולי צמתים הדוקים (ZO-1) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
+    <div class="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
   </header>
 
   <!-- LEFT: images + detection controls -->
@@ -1098,7 +1098,7 @@ async function callGeminiForNodes(rec, apiKey, modelName){
   const dataUrl = canvas.toDataURL('image/png');
   const base64 = dataUrl.split(',')[1];
 
-  const prompt = `You are analyzing a high-resolution fluorescence microscopy image of tight junctions (ZO-1 immunofluorescence staining). The bright green lines depict cell-cell borders, which form a polygon-like mesh representing cell boundaries.
+  const prompt = `You are analyzing a high-resolution fluorescence microscopy image of cell boundaries / tight junctions (staining such as ZO-1, Occludin, Phalloidin, etc.). The bright lines depict cell-cell borders, which form a polygon-like mesh representing cell boundaries.
 
 Your task is to identify every single TRI-CELLULAR JUNCTION (TJ) in the image with maximum recall and precision.
 A tri-cellular junction is a point where three or more cells meet. Visually, this is an intersection where three or more green lines (borders) converge (typically shaped like a Y, T, or asterisk *).
@@ -1294,20 +1294,46 @@ function drawOverlay(){
   const rec = activeImg();
   ovCtx.clearRect(0,0,els.overlay.width, els.overlay.height);
   if(!rec) return;
-  // edges
+
+  let selectedEdgeObj = null;
+
+  // draw non-selected edges first
   rec.edges.forEach(edge=>{
+    if(edge.id === state.selectedEdge) {
+      selectedEdgeObj = edge;
+      return;
+    }
     ovCtx.beginPath();
     edge.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
     ovCtx.strokeStyle = edge.incomplete ? '#555' : ratioColor(edge.ratio);
-    ovCtx.lineWidth = edge.id===state.selectedEdge ? 4 : 2;
-    if(edge.id===state.selectedEdge){
-      ovCtx.shadowColor = '#ff4dd8'; ovCtx.shadowBlur = 6;
-    } else { ovCtx.shadowBlur = 0; }
+    ovCtx.lineWidth = 2;
     ovCtx.setLineDash(edge.incomplete? [4,3] : []);
     ovCtx.stroke();
     ovCtx.setLineDash([]);
-    ovCtx.shadowBlur = 0;
   });
+
+  // draw selected edge on top with extreme highlight
+  if(selectedEdgeObj) {
+    // 1. Draw a thick black background outline for high contrast
+    ovCtx.beginPath();
+    selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
+    ovCtx.strokeStyle = '#000000';
+    ovCtx.lineWidth = 8;
+    ovCtx.stroke();
+
+    // 2. Draw the neon yellow foreground line with glow
+    ovCtx.beginPath();
+    selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
+    ovCtx.strokeStyle = '#ffff00'; // Neon Yellow
+    ovCtx.lineWidth = 4;
+    ovCtx.shadowColor = '#ffff00';
+    ovCtx.shadowBlur = 12;
+    ovCtx.setLineDash(selectedEdgeObj.incomplete ? [4,3] : []);
+    ovCtx.stroke();
+    ovCtx.setLineDash([]);
+    ovCtx.shadowBlur = 0;
+  }
+
   // nodes
   rec.nodes.forEach(n=>{
     ovCtx.beginPath();
@@ -1473,6 +1499,15 @@ function pointToSegDist(px,py,a,b){
   const cx=ax+t*dx, cy=ay+t*dy;
   return Math.hypot(px-cx, py-cy);
 }
+function pointToSegProj(px,py,a,b){
+  const [ax,ay]=a,[bx,by]=b;
+  const dx=bx-ax, dy=by-ay;
+  const len2 = dx*dx+dy*dy;
+  let t = len2? ((px-ax)*dx+(py-ay)*dy)/len2 : 0;
+  t = Math.max(0,Math.min(1,t));
+  const cx=ax+t*dx, cy=ay+t*dy;
+  return [cx, cy, t];
+}
 function findNearestNode(rec, x, y, maxDist){
   let best=null, bestD=maxDist;
   rec.nodes.forEach(n=>{
@@ -1483,19 +1518,39 @@ function findNearestNode(rec, x, y, maxDist){
 }
 
 function addNodeOnEdge(rec, x, y){
-  const edge = findNearestEdge(rec, x, y, 10);
+  const edge = findNearestEdge(rec, x, y, 25);
   if(!edge){ log('<span style="color:#ff6b6b">לא נמצאה דופן קרובה מספיק ללחיצה</span>'); return; }
-  // find nearest path vertex index
-  let bestI=1, bestD=Infinity;
-  for(let i=0;i<edge.path.length;i++){
-    const d = Math.hypot(edge.path[i][0]-x, edge.path[i][1]-y);
-    if(d<bestD){ bestD=d; bestI=i; }
+
+  // find nearest segment on the edge path
+  let bestSegIdx = -1;
+  let bestDist = Infinity;
+  for (let i = 1; i < edge.path.length; i++) {
+    const d = pointToSegDist(x, y, edge.path[i - 1], edge.path[i]);
+    if (d < bestDist) {
+      bestDist = d;
+      bestSegIdx = i;
+    }
   }
-  if(bestI<=0 || bestI>=edge.path.length-1){ log('<span style="color:#ff6b6b">נקודה קרובה מדי לצומת קיים</span>'); return; }
-  const newNode = { id:'n'+(rec.nextNodeId++), x:edge.path[bestI][0], y:edge.path[bestI][1], pixels:[] };
+  if (bestSegIdx === -1) return;
+
+  const [projX, projY] = pointToSegProj(x, y, edge.path[bestSegIdx - 1], edge.path[bestSegIdx]);
+
+  // check distance to endpoints
+  const distToStart = Math.hypot(edge.path[0][0] - projX, edge.path[0][1] - projY);
+  const distToEnd = Math.hypot(edge.path[edge.path.length - 1][0] - projX, edge.path[edge.path.length - 1][1] - projY);
+  if (distToStart < 10 || distToEnd < 10) {
+    log('<span style="color:#ff6b6b">נקודה קרובה מדי לצומת קיים</span>');
+    return;
+  }
+
+  const newNode = { id:'n'+(rec.nextNodeId++), x:projX, y:projY, pixels:[] };
   rec.nodes.push(newNode);
-  const path1 = edge.path.slice(0, bestI+1);
-  const path2 = edge.path.slice(bestI);
+
+  const path1 = edge.path.slice(0, bestSegIdx);
+  path1.push([projX, projY]);
+
+  const path2 = [[projX, projY]].concat(edge.path.slice(bestSegIdx));
+
   const n1 = rec.nodes.find(n=>n.id===edge.n1);
   const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
   const e1 = { id:'e'+(rec.nextEdgeId++), n1:edge.n1, n2:newNode.id, path:path1,

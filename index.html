@@ -105,20 +105,66 @@
     </div>
 
     <div class="block">
-      <h2>2. זיהוי צמתים</h2>
+      <h2>2. עיבוד מקדים ובינריזציה</h2>
+      <label class="small">שיטת בינריזציה:</label>
+      <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled>
+        <option value="adaptive">אדפטיבית (מקומית)</option>
+        <option value="global">גלובלית (Otsu)</option>
+      </select>
+
+      <div id="panelGlobal" style="display:none;">
+        <label class="small">סף בהירות (ערוץ ירוק): <span id="thVal">—</span></label>
+        <input type="range" id="threshold" min="0" max="255" value="40" disabled>
+      </div>
+
+      <div id="panelAdaptive">
+        <label class="small">גודל חלון מקומי (px): <span id="adaptSizeVal">41</span></label>
+        <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled>
+
+        <label class="small" style="margin-top:6px;">רגישות / היסט (C): <span id="adaptCVal">7</span></label>
+        <input type="range" id="adaptC" min="-30" max="30" step="1" value="7" disabled>
+
+        <label class="small" style="margin-top:6px;">סף בהירות מינימלי לרקע: <span id="adaptMinThVal">15</span></label>
+        <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled>
+      </div>
+
+      <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
+        <label class="small" style="display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" id="fillHoles" checked disabled>
+          <span>מילוי חורים קטנים בדפנות</span>
+        </label>
+        <div id="panelHoleSize" style="margin-top:4px;">
+          <label class="small">גודל חור מקסימלי (px): <span id="holeSizeVal">50</span></label>
+          <input type="range" id="holeSize" min="5" max="500" value="50" disabled>
+        </div>
+
+        <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+          <input type="checkbox" id="removeIslands" checked disabled>
+          <span>הסרת איי רעש רקע</span>
+        </label>
+        <div id="panelIslandSize" style="margin-top:4px;">
+          <label class="small">גודל אי מקסימלי (px): <span id="islandSizeVal">100</span></label>
+          <input type="range" id="islandSize" min="10" max="1000" value="100" disabled>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="btnPreviewBin" style="width:100%;" disabled>תצוגת סף (בינארי)</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <h2>3. זיהוי צמתים וגרף</h2>
       <div class="modebar" style="margin-bottom:10px;">
         <button id="tabClassical" class="active-mode">קלאסי</button>
         <button id="tabGemini">Gemini API</button>
       </div>
 
       <div id="panelClassical">
-        <label class="small">סף בהירות (ערוץ ירוק): <span id="thVal">—</span></label>
-        <input type="range" id="threshold" min="0" max="255" value="40" disabled>
-        <label class="small" style="margin-top:8px;">רגישות מיזוג צמתים סמוכים (px): <span id="mergeVal">—</span></label>
+        <label class="small">רגישות מיזוג צמתים סמוכים (px): <span id="mergeVal">—</span></label>
         <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
         <div class="row" style="margin-top:8px;">
-          <button id="btnPreviewBin" disabled>תצוגת סף (בינארי)</button>
-          <button id="btnDetect" class="primary" disabled>הרץ זיהוי מלא</button>
+          <button id="btnDetect" class="primary" style="width:100%;" disabled>הרץ זיהוי מלא</button>
         </div>
         <div class="hint">
           תהליך קלאסי בלבד: סף על הערוץ הירוק ← דיקוק לשלד חד-פיקסלי (Zhang-Suen) ←
@@ -138,10 +184,8 @@
         <select id="geminiModel" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;" disabled>
           <option>— טענו רשימת מודלים תחילה —</option>
         </select>
-        <label class="small" style="margin-top:8px;">סף בהירות לצורך בניית השלד: <span id="thValG">—</span></label>
-        <input type="range" id="thresholdG" min="0" max="255" value="40" disabled>
         <div class="row" style="margin-top:8px;">
-          <button id="btnDetectGemini" class="primary" disabled>זהה צמתים עם Gemini</button>
+          <button id="btnDetectGemini" class="primary" style="width:100%;" disabled>זהה צמתים עם Gemini</button>
         </div>
         <div class="hint">
           Gemini מקבל את התמונה ומתבקש להחזיר <b>רק</b> את מיקומי הצמתים
@@ -153,7 +197,7 @@
     </div>
 
     <div class="block">
-      <h2>3. עריכה ידנית</h2>
+      <h2>4. עריכה ידנית</h2>
       <div class="modebar">
         <button id="modeSelect" class="active-mode">בחירה</button>
         <button id="modeAddNode">הוספת צומת</button>
@@ -226,8 +270,25 @@ const state = {
 const els = {
   fileInput: document.getElementById('fileInput'),
   imgList: document.getElementById('imgList'),
+  binMethod: document.getElementById('binMethod'),
+  panelGlobal: document.getElementById('panelGlobal'),
   threshold: document.getElementById('threshold'),
   thVal: document.getElementById('thVal'),
+  panelAdaptive: document.getElementById('panelAdaptive'),
+  adaptSize: document.getElementById('adaptSize'),
+  adaptSizeVal: document.getElementById('adaptSizeVal'),
+  adaptC: document.getElementById('adaptC'),
+  adaptCVal: document.getElementById('adaptCVal'),
+  adaptMinTh: document.getElementById('adaptMinTh'),
+  adaptMinThVal: document.getElementById('adaptMinThVal'),
+  fillHoles: document.getElementById('fillHoles'),
+  panelHoleSize: document.getElementById('panelHoleSize'),
+  holeSize: document.getElementById('holeSize'),
+  holeSizeVal: document.getElementById('holeSizeVal'),
+  removeIslands: document.getElementById('removeIslands'),
+  panelIslandSize: document.getElementById('panelIslandSize'),
+  islandSize: document.getElementById('islandSize'),
+  islandSizeVal: document.getElementById('islandSizeVal'),
   mergeDist: document.getElementById('mergeDist'),
   mergeVal: document.getElementById('mergeVal'),
   tabClassical: document.getElementById('tabClassical'),
@@ -237,8 +298,6 @@ const els = {
   geminiKey: document.getElementById('geminiKey'),
   btnLoadModels: document.getElementById('btnLoadModels'),
   geminiModel: document.getElementById('geminiModel'),
-  thresholdG: document.getElementById('thresholdG'),
-  thValG: document.getElementById('thValG'),
   btnDetectGemini: document.getElementById('btnDetectGemini'),
   btnPreviewBin: document.getElementById('btnPreviewBin'),
   btnDetect: document.getElementById('btnDetect'),
@@ -313,6 +372,14 @@ function loadFile(file){
       threshold: autoThreshold(imgData), mergeDist: Math.max(10, Math.round(Math.min(w,h)/40)),
       nextNodeId:1, nextEdgeId:1,
       detected:false,
+      binMethod: 'adaptive',
+      adaptSize: 41,
+      adaptC: 7,
+      adaptMinTh: 15,
+      fillHoles: true,
+      holeSize: 50,
+      removeIslands: true,
+      islandSize: 100,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -366,38 +433,117 @@ function setActiveImage(id){
   els.base.width = els.overlay.width = rec.width;
   els.base.height = els.overlay.height = rec.height;
   baseCtx.putImageData(rec.imgData,0,0);
+
+  // Enable UI controls
+  els.binMethod.disabled = false;
   els.threshold.disabled = false;
+  els.adaptSize.disabled = false;
+  els.adaptC.disabled = false;
+  els.adaptMinTh.disabled = false;
+  els.fillHoles.disabled = false;
+  els.holeSize.disabled = !rec.fillHoles;
+  els.removeIslands.disabled = false;
+  els.islandSize.disabled = !rec.removeIslands;
   els.btnPreviewBin.disabled = false;
   els.btnDetect.disabled = false;
+  els.mergeDist.disabled = false;
+
+  // Sync state values to UI controls
+  els.binMethod.value = rec.binMethod;
   els.threshold.value = rec.threshold;
   els.thVal.textContent = rec.threshold;
-  els.mergeDist.disabled = false;
+  els.adaptSize.value = rec.adaptSize;
+  els.adaptSizeVal.textContent = rec.adaptSize;
+  els.adaptC.value = rec.adaptC;
+  els.adaptCVal.textContent = rec.adaptC;
+  els.adaptMinTh.value = rec.adaptMinTh;
+  els.adaptMinThVal.textContent = rec.adaptMinTh;
+  els.fillHoles.checked = rec.fillHoles;
+  els.holeSize.value = rec.holeSize;
+  els.holeSizeVal.textContent = rec.holeSize;
+  els.removeIslands.checked = rec.removeIslands;
+  els.islandSize.value = rec.islandSize;
+  els.islandSizeVal.textContent = rec.islandSize;
   els.mergeDist.value = rec.mergeDist;
   els.mergeVal.textContent = rec.mergeDist;
-  els.thresholdG.disabled = false;
-  els.thresholdG.value = rec.threshold;
-  els.thValG.textContent = rec.threshold;
+
+  // Show/hide appropriate panels based on selected binarization method
+  if (rec.binMethod === 'adaptive') {
+    els.panelAdaptive.style.display = '';
+    els.panelGlobal.style.display = 'none';
+  } else {
+    els.panelAdaptive.style.display = 'none';
+    els.panelGlobal.style.display = '';
+  }
+
   els.btnDetectGemini.disabled = !(els.geminiKey.value && els.geminiModel.value);
   drawOverlay();
   updateStatsPanel();
   renderEdgeTable();
 }
 
-/* ===================== Threshold / binary preview ===================== */
-els.threshold.addEventListener('input', ()=>{
+/* ===================== Preprocessing & Threshold Controls ===================== */
+els.binMethod.addEventListener('change', () => {
   const rec = activeImg(); if(!rec) return;
-  rec.threshold = parseInt(els.threshold.value,10);
-  els.thVal.textContent = rec.threshold;
-  els.thresholdG.value = rec.threshold;
-  els.thValG.textContent = rec.threshold;
+  rec.binMethod = els.binMethod.value;
+  if (rec.binMethod === 'adaptive') {
+    els.panelAdaptive.style.display = '';
+    els.panelGlobal.style.display = 'none';
+  } else {
+    els.panelAdaptive.style.display = 'none';
+    els.panelGlobal.style.display = '';
+  }
 });
-els.thresholdG.addEventListener('input', ()=>{
+
+els.threshold.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
-  rec.threshold = parseInt(els.thresholdG.value,10);
-  els.thValG.textContent = rec.threshold;
-  els.threshold.value = rec.threshold;
+  rec.threshold = parseInt(els.threshold.value, 10);
   els.thVal.textContent = rec.threshold;
 });
+
+els.adaptSize.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.adaptSize = parseInt(els.adaptSize.value, 10);
+  els.adaptSizeVal.textContent = rec.adaptSize;
+});
+
+els.adaptC.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.adaptC = parseInt(els.adaptC.value, 10);
+  els.adaptCVal.textContent = rec.adaptC;
+});
+
+els.adaptMinTh.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.adaptMinTh = parseInt(els.adaptMinTh.value, 10);
+  els.adaptMinThVal.textContent = rec.adaptMinTh;
+});
+
+els.fillHoles.addEventListener('change', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.fillHoles = els.fillHoles.checked;
+  els.holeSize.disabled = !rec.fillHoles;
+});
+
+els.holeSize.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.holeSize = parseInt(els.holeSize.value, 10);
+  els.holeSizeVal.textContent = rec.holeSize;
+});
+
+els.removeIslands.addEventListener('change', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.removeIslands = els.removeIslands.checked;
+  els.islandSize.disabled = !rec.removeIslands;
+});
+
+els.islandSize.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.islandSize = parseInt(els.islandSize.value, 10);
+  els.islandSizeVal.textContent = rec.islandSize;
+});
+
+/* ===================== Node & Graph Controls ===================== */
 els.tabClassical.onclick = ()=>{
   els.tabClassical.classList.add('active-mode'); els.tabGemini.classList.remove('active-mode');
   els.panelClassical.style.display=''; els.panelGemini.style.display='none';
@@ -418,7 +564,7 @@ els.mergeDist.addEventListener('input', ()=>{
 });
 els.btnPreviewBin.addEventListener('click', ()=>{
   const rec = activeImg(); if(!rec) return;
-  const bin = binarize(rec.imgData, rec.threshold);
+  const bin = binarize(rec);
   const img = ovCtx.createImageData(rec.width, rec.height);
   for(let i=0;i<bin.length;i++){
     const v = bin[i]?255:0;
@@ -426,7 +572,8 @@ els.btnPreviewBin.addEventListener('click', ()=>{
   }
   ovCtx.clearRect(0,0,rec.width,rec.height);
   ovCtx.putImageData(img,0,0);
-  log(`תצוגת סף בינארי בסף=${rec.threshold}`);
+  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבי' : 'גלובלי';
+  log(`תצוגת סף בינארי (${modeStr})`);
 });
 
 function smoothGreen(imgData){
@@ -449,13 +596,156 @@ function smoothGreen(imgData){
   return out;
 }
 
-function binarize(imgData, threshold){
-  const w=imgData.width, h=imgData.height;
-  const g = smoothGreen(imgData);
-  const out = new Uint8Array(w*h);
-  for(let p=0;p<g.length;p++){
-    out[p] = g[p] >= threshold ? 1 : 0;
+function computeIntegralImage(data, w, h) {
+  const integral = new Float64Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let rowSum = 0;
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      rowSum += data[idx];
+      integral[idx] = rowSum + (y > 0 ? integral[(y - 1) * w + x] : 0);
+    }
   }
+  return integral;
+}
+
+function getRectSum(integral, w, h, x1, y1, x2, y2) {
+  x1 = Math.max(0, x1);
+  y1 = Math.max(0, y1);
+  x2 = Math.min(w - 1, x2);
+  y2 = Math.min(h - 1, y2);
+
+  const idxA = (y1 > 0 && x1 > 0) ? integral[(y1 - 1) * w + (x1 - 1)] : 0;
+  const idxB = (y1 > 0) ? integral[(y1 - 1) * w + x2] : 0;
+  const idxC = (x1 > 0) ? integral[y2 * w + (x1 - 1)] : 0;
+  const idxD = integral[y2 * w + x2];
+
+  return idxD - idxB - idxC + idxA;
+}
+
+function fillSmallHoles(bin, w, h, maxHoleSize) {
+  const visited = new Uint8Array(w * h);
+  const queue = new Int32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const startIdx = y * w + x;
+      if (bin[startIdx] === 0 && !visited[startIdx]) {
+        let head = 0, tail = 0;
+        queue[tail++] = startIdx;
+        visited[startIdx] = 1;
+        let touchesBorder = false;
+
+        while (head < tail) {
+          const idx = queue[head++];
+          const cx = idx % w;
+          const cy = Math.floor(idx / w);
+          if (cx === 0 || cx === w - 1 || cy === 0 || cy === h - 1) {
+            touchesBorder = true;
+          }
+          // 4-neighbors
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+              const nIdx = ny * w + nx;
+              if (bin[nIdx] === 0 && !visited[nIdx]) {
+                visited[nIdx] = 1;
+                queue[tail++] = nIdx;
+              }
+            }
+          }
+        }
+
+        if (!touchesBorder && tail <= maxHoleSize) {
+          for (let i = 0; i < tail; i++) {
+            bin[queue[i]] = 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+function removeSmallIslands(bin, w, h, maxIslandSize) {
+  const visited = new Uint8Array(w * h);
+  const queue = new Int32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const startIdx = y * w + x;
+      if (bin[startIdx] === 1 && !visited[startIdx]) {
+        let head = 0, tail = 0;
+        queue[tail++] = startIdx;
+        visited[startIdx] = 1;
+
+        while (head < tail) {
+          const idx = queue[head++];
+          const cx = idx % w;
+          const cy = Math.floor(idx / w);
+          // 8-neighbors
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = cx + dx, ny = cy + dy;
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                const nIdx = ny * w + nx;
+                if (bin[nIdx] === 1 && !visited[nIdx]) {
+                  visited[nIdx] = 1;
+                  queue[tail++] = nIdx;
+                }
+              }
+            }
+          }
+        }
+
+        if (tail <= maxIslandSize) {
+          for (let i = 0; i < tail; i++) {
+            bin[queue[i]] = 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+function binarize(rec) {
+  const w = rec.width, h = rec.height;
+  const g = smoothGreen(rec.imgData);
+  const out = new Uint8Array(w * h);
+
+  if (rec.binMethod === 'adaptive') {
+    const integral = computeIntegralImage(g, w, h);
+    const S = rec.adaptSize;
+    const C = rec.adaptC;
+    const minTh = rec.adaptMinTh;
+    const half = Math.floor(S / 2);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (g[idx] < minTh) {
+          out[idx] = 0;
+          continue;
+        }
+        const sum = getRectSum(integral, w, h, x - half, y - half, x + half, y + half);
+        const count = (Math.min(w - 1, x + half) - Math.max(0, x - half) + 1) *
+                      (Math.min(h - 1, y + half) - Math.max(0, y - half) + 1);
+        const mean = sum / count;
+        out[idx] = g[idx] >= (mean - C) ? 1 : 0;
+      }
+    }
+  } else {
+    for (let p = 0; p < g.length; p++) {
+      out[p] = g[p] >= rec.threshold ? 1 : 0;
+    }
+  }
+
+  if (rec.fillHoles) {
+    fillSmallHoles(out, w, h, rec.holeSize);
+  }
+
+  if (rec.removeIslands) {
+    removeSmallIslands(out, w, h, rec.islandSize);
+  }
+
   return out;
 }
 
@@ -547,8 +837,9 @@ function degreeMap(skel, w, h){
 }
 
 function detectGraph(rec){
-  log(`בינריזציה בסף=${rec.threshold} ...`);
-  const bin = binarize(rec.imgData, rec.threshold);
+  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבית' : `גלובלית בסף=${rec.threshold}`;
+  log(`בינריזציה (${modeStr})...`);
+  const bin = binarize(rec);
   log('דיקוק שלד (Zhang-Suen)...');
   const skel = thin(bin, rec.width, rec.height);
   const w=rec.width, h=rec.height;
@@ -807,13 +1098,25 @@ async function callGeminiForNodes(rec, apiKey, modelName){
   const dataUrl = canvas.toDataURL('image/png');
   const base64 = dataUrl.split(',')[1];
 
-  const prompt = `You are analyzing a fluorescence microscopy image of tight junctions (ZO-1 immunofluorescence staining). Bright green lines form a network of cell-cell borders (a mesh of polygon-shaped cell outlines).
-Identify every TRI-CELLULAR JUNCTION: a point where three or more cell borders visibly meet (a Y-shaped or multi-way branch point in the green line network).
-Do NOT include: points where a border simply curves, free/dangling line endpoints, or noise specks.
-The image is exactly ${rec.width}x${rec.height} pixels. Origin (0,0) is the top-left corner, x increases to the right, y increases downward.
-Return ONLY a strict JSON array (no markdown fences, no extra text) in the exact form:
-[{"x": <integer 0-${rec.width}>, "y": <integer 0-${rec.height}>}, ...]
-One entry per tri-cellular junction you can identify.`;
+  const prompt = `You are analyzing a high-resolution fluorescence microscopy image of tight junctions (ZO-1 immunofluorescence staining). The bright green lines depict cell-cell borders, which form a polygon-like mesh representing cell boundaries.
+
+Your task is to identify every single TRI-CELLULAR JUNCTION (TJ) in the image with maximum recall and precision.
+A tri-cellular junction is a point where three or more cells meet. Visually, this is an intersection where three or more green lines (borders) converge (typically shaped like a Y, T, or asterisk *).
+
+Guidelines:
+1. Identify all genuine junctions where three or more cell boundaries intersect.
+2. Search carefully for blurry, faint, or dim junctions. If you see converging borders that fade near their intersection, trace their directions to locate the exact meeting point.
+3. Do NOT identify false junctions:
+   - Do NOT place a junction in the middle of a continuous, curving cell border where only two cells meet.
+   - Do NOT place a junction at dangling or free endpoints of an incomplete border.
+   - Do NOT mark fluorescent noise specks or isolated bright dots as junctions.
+4. If two junctions are extremely close to each other, output both with their distinct coordinates.
+
+The image has a working resolution of exactly ${rec.width}x${rec.height} pixels. The coordinate system origin (0,0) is at the top-left corner. x increases to the right, and y increases downward.
+Provide the identified junctions as a highly accurate list of pixel coordinates.
+
+Return ONLY a strict JSON array (without any markdown code block formatting, markdown backticks, or any conversational text) of objects in this exact schema:
+[{"x": <integer 0-${rec.width}>, "y": <integer 0-${rec.height}>}, ...]`;
 
   const body = {
     contents: [{ parts: [ {text: prompt}, {inlineData:{mimeType:'image/png', data: base64}} ] }],
@@ -836,24 +1139,43 @@ One entry per tri-cellular junction you can identify.`;
   return points.filter(p=> typeof p.x==='number' && typeof p.y==='number');
 }
 
-function snapPointToSkeleton(skel, w, h, gx, gy, maxRadius){
+function snapPointToSkeleton(skel, w, h, gx, gy, maxRadius, degMap){
   gx = Math.round(gx); gy = Math.round(gy);
-  if(gx>=0&&gy>=0&&gx<w&&gy<h&&skel[gy*w+gx]) return [gx,gy];
-  for(let r=1; r<=maxRadius; r++){
-    for(let dx=-r; dx<=r; dx++){
-      for(const dy of [-r, r]){
-        const nx=gx+dx, ny=gy+dy;
-        if(nx>=0&&ny>=0&&nx<w&&ny<h&&skel[ny*w+nx]) return [nx,ny];
-      }
-    }
-    for(let dy=-r+1; dy<=r-1; dy++){
-      for(const dx of [-r, r]){
-        const nx=gx+dx, ny=gy+dy;
-        if(nx>=0&&ny>=0&&nx<w&&ny<h&&skel[ny*w+nx]) return [nx,ny];
+
+  // 1. Try to find the closest junction/branch point pixel (degree >= 3) first.
+  // This guarantees that if Gemini points to a junction, we snap to its actual physical intersection.
+  let bestBranch = null, bestBranchDist = Infinity;
+  for (let dy = -maxRadius; dy <= maxRadius; dy++) {
+    for (let dx = -maxRadius; dx <= maxRadius; dx++) {
+      const nx = gx + dx, ny = gy + dy;
+      if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[ny * w + nx]) {
+        if (degMap[ny * w + nx] >= 3) {
+          const d = Math.hypot(dx, dy);
+          if (d < bestBranchDist) {
+            bestBranchDist = d;
+            bestBranch = [nx, ny];
+          }
+        }
       }
     }
   }
-  return null;
+  if (bestBranch) return bestBranch;
+
+  // 2. Fall back to finding the closest skeleton pixel.
+  let bestSkel = null, bestSkelDist = Infinity;
+  for (let dy = -maxRadius; dy <= maxRadius; dy++) {
+    for (let dx = -maxRadius; dx <= maxRadius; dx++) {
+      const nx = gx + dx, ny = gy + dy;
+      if (nx >= 0 && ny >= 0 && nx < w && ny < h && skel[ny * w + nx]) {
+        const d = Math.hypot(dx, dy);
+        if (d < bestSkelDist) {
+          bestSkelDist = d;
+          bestSkel = [nx, ny];
+        }
+      }
+    }
+  }
+  return bestSkel;
 }
 
 function localBlobAround(skel, w, h, sx, sy, radius){
@@ -877,23 +1199,37 @@ function localBlobAround(skel, w, h, sx, sy, radius){
 }
 
 async function detectGraphWithGemini(rec, apiKey, modelName){
-  log('בינריזציה ובניית שלד (לצורך מעקב אחר דפנות)...');
-  const bin = binarize(rec.imgData, rec.threshold);
+  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבית' : `גלובלית בסף=${rec.threshold}`;
+  log(`בינריזציה ובניית שלד (${modeStr})...`);
+  const bin = binarize(rec);
   const skel = thin(bin, rec.width, rec.height);
   const spurLen = Math.max(6, Math.round(Math.min(rec.width,rec.height)/80));
   pruneSpurs(skel, rec.width, rec.height, spurLen);
   rec.binary = bin; rec.skeleton = skel;
 
   log('שולח תמונה ל-Gemini לזיהוי צמתים תלת-תאיים...');
-  const points = await callGeminiForNodes(rec, apiKey, modelName);
+  let points = await callGeminiForNodes(rec, apiKey, modelName);
   log(`Gemini החזיר ${points.length} נקודות מועמדות`);
 
+  // Deduplicate points returned by Gemini that are very close to each other (e.g., within 15px)
+  const deduped = [];
+  points.forEach(p => {
+    const isClose = deduped.some(dp => Math.hypot(dp.x - p.x, dp.y - p.y) < 15);
+    if (!isClose) deduped.push(p);
+  });
+  if (points.length !== deduped.length) {
+    log(`בוצע סינון כפילויות של נקודות סמוכות מ-Gemini: ${points.length} ← ${deduped.length}`);
+    points = deduped;
+  }
+
   const w=rec.width, h=rec.height;
+  const deg = degreeMap(skel, w, h);
   const nodes = [];
   const pixelClusterId = new Map();
   let skipped = 0;
+
   points.forEach((p,i)=>{
-    const snapped = snapPointToSkeleton(skel, w, h, p.x, p.y, 25);
+    const snapped = snapPointToSkeleton(skel, w, h, p.x, p.y, 25, deg);
     if(!snapped){ skipped++; return; }
     const blob = localBlobAround(skel, w, h, snapped[0], snapped[1], 10);
     const cx = blob.reduce((s,q)=>s+q[0],0)/blob.length;
@@ -905,7 +1241,6 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   if(skipped) log(`<span style="color:#ff6b6b">${skipped} נקודות לא נמצאו קרוב לשלד ודולגו</span>`);
   rec.nextNodeId = nodes.length+1;
 
-  const deg = degreeMap(skel, w, h);
   const edges = traceEdges(skel, w, h, deg, nodes, pixelClusterId);
   rec.nodes = nodes;
   rec.edges = edges;

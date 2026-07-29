@@ -265,6 +265,7 @@ const state = {
   mode: 'select',
   selectedEdge: null,
   redraw: {active:false, points:[]},
+  showBinary: false,
 };
 
 const els = {
@@ -564,16 +565,15 @@ els.mergeDist.addEventListener('input', ()=>{
 });
 els.btnPreviewBin.addEventListener('click', ()=>{
   const rec = activeImg(); if(!rec) return;
-  const bin = binarize(rec);
-  const img = ovCtx.createImageData(rec.width, rec.height);
-  for(let i=0;i<bin.length;i++){
-    const v = bin[i]?255:0;
-    img.data[i*4]=0; img.data[i*4+1]=v; img.data[i*4+2]=0; img.data[i*4+3]=v?255:0;
+  state.showBinary = !state.showBinary;
+  if(state.showBinary){
+    els.btnPreviewBin.classList.add('active-mode');
+    log(`תצוגת סף בינארי הופעלה`);
+  } else {
+    els.btnPreviewBin.classList.remove('active-mode');
+    log(`תצוגת סף בינארי כובתה`);
   }
-  ovCtx.clearRect(0,0,rec.width,rec.height);
-  ovCtx.putImageData(img,0,0);
-  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבי' : 'גלובלי';
-  log(`תצוגת סף בינארי (${modeStr})`);
+  drawOverlay();
 });
 
 function smoothGreen(imgData){
@@ -879,12 +879,51 @@ function detectGraph(rec){
   rec.edges = edges;
   rec.nextEdgeId = edges.length+1;
 
+  // Connect incomplete edges that end close to any existing node
+  const connectedCount = connectIncompleteEdges(rec, 25);
+  if (connectedCount > 0) {
+    log(`חיבור אוטומטי חכם: חוברו ${connectedCount} קצוות פתוחים (Incomplete) לצמתים סמוכים`);
+  }
+
   // fine skeleton texture / staining ruffles create clusters of nearby branch
   // points that are really the same biological junction; collapse any two
   // nodes connected by a very short traced edge into one.
   const mergedCount = mergeCloseNodes(rec, rec.mergeDist);
   rec.detected = true;
   log(`זוהו ${nodes.length} נקודות הסתעפות גולמיות, מוזגו ${mergedCount} זוגות סמוכים ← <b>${rec.nodes.length}</b> צמתים ו-<b>${rec.edges.length}</b> דפנות (מרחק מיזוג=${rec.mergeDist}px)`);
+}
+
+function connectIncompleteEdges(rec, maxDist) {
+  let connectedCount = 0;
+  rec.edges.forEach(e => {
+    if (!e.incomplete) return;
+    const lastPt = e.path[e.path.length - 1];
+
+    // Find closest node that is not the start node (e.n1)
+    let closestNode = null;
+    let closestDist = Infinity;
+
+    rec.nodes.forEach(n => {
+      if (n.id === e.n1) return;
+      const d = Math.hypot(n.x - lastPt[0], n.y - lastPt[1]);
+      if (d < closestDist) {
+        closestDist = d;
+        closestNode = n;
+      }
+    });
+
+    if (closestNode && closestDist <= maxDist) {
+      // Connect!
+      e.n2 = closestNode.id;
+      e.path.push([closestNode.x, closestNode.y]);
+      e.length = pathLength(e.path);
+      e.straight = Math.hypot(closestNode.x - rec.nodes.find(n=>n.id===e.n1).x, closestNode.y - rec.nodes.find(n=>n.id===e.n1).y);
+      e.ratio = e.straight > 0 ? e.length / e.straight : NaN;
+      e.incomplete = false;
+      connectedCount++;
+    }
+  });
+  return connectedCount;
 }
 
 function mergeCloseNodes(rec, minLen){
@@ -1245,6 +1284,13 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   rec.nodes = nodes;
   rec.edges = edges;
   rec.nextEdgeId = edges.length+1;
+
+  // Connect incomplete edges that end close to any existing node
+  const connectedCount = connectIncompleteEdges(rec, 25);
+  if (connectedCount > 0) {
+    log(`חיבור אוטומטי חכם (Gemini): חוברו ${connectedCount} קצוות פתוחים (Incomplete) לצמתים סמוכים`);
+  }
+
   rec.detected = true;
   log(`נבנה גרף: <b>${nodes.length}</b> צמתים (מ-Gemini) ו-<b>${edges.length}</b> דפנות (מעקב קלאסי)`);
 }
@@ -1295,6 +1341,27 @@ function drawOverlay(){
   ovCtx.clearRect(0,0,els.overlay.width, els.overlay.height);
   if(!rec) return;
 
+  // If binary display toggle is on, draw binary overlay as a semi-transparent, subtle mask first
+  if (state.showBinary) {
+    const bin = binarize(rec);
+    const img = ovCtx.createImageData(rec.width, rec.height);
+    for(let i=0;i<bin.length;i++){
+      if(bin[i]){
+        // light-green translucent mask for binarized boundaries
+        img.data[i*4] = 57;
+        img.data[i*4+1] = 255;
+        img.data[i*4+2] = 158;
+        img.data[i*4+3] = 100; // opacity ~39%
+      } else {
+        img.data[i*4] = 0;
+        img.data[i*4+1] = 0;
+        img.data[i*4+2] = 0;
+        img.data[i*4+3] = 0; // transparent
+      }
+    }
+    ovCtx.putImageData(img,0,0);
+  }
+
   let selectedEdgeObj = null;
 
   // draw non-selected edges first
@@ -1314,24 +1381,28 @@ function drawOverlay(){
 
   // draw selected edge on top with extreme highlight
   if(selectedEdgeObj) {
-    // 1. Draw a thick black background outline for high contrast
+    // 1. Draw an outer pink dashed highlight halo offset by about 5px
+    ovCtx.beginPath();
+    selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
+    ovCtx.strokeStyle = '#ff4dd8'; // Vivid Pink/Magenta
+    ovCtx.lineWidth = 10;
+    ovCtx.setLineDash([6, 4]);
+    ovCtx.stroke();
+    ovCtx.setLineDash([]);
+
+    // 2. Draw a black masking separator line to leave space between the pink halo and the center color
     ovCtx.beginPath();
     selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
     ovCtx.strokeStyle = '#000000';
-    ovCtx.lineWidth = 8;
+    ovCtx.lineWidth = 4;
     ovCtx.stroke();
 
-    // 2. Draw the neon yellow foreground line with glow
+    // 3. Draw the original undulation heatmap color at the very center to keep its measurement visible
     ovCtx.beginPath();
     selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
-    ovCtx.strokeStyle = '#ffff00'; // Neon Yellow
-    ovCtx.lineWidth = 4;
-    ovCtx.shadowColor = '#ffff00';
-    ovCtx.shadowBlur = 12;
-    ovCtx.setLineDash(selectedEdgeObj.incomplete ? [4,3] : []);
+    ovCtx.strokeStyle = selectedEdgeObj.incomplete ? '#555' : ratioColor(selectedEdgeObj.ratio);
+    ovCtx.lineWidth = 2;
     ovCtx.stroke();
-    ovCtx.setLineDash([]);
-    ovCtx.shadowBlur = 0;
   }
 
   // nodes
@@ -1490,6 +1561,16 @@ function findNearestEdge(rec, x, y, maxDist){
   });
   return best;
 }
+function findAbsoluteNearestEdge(rec, x, y){
+  let best=null, bestD=Infinity;
+  rec.edges.forEach(edge=>{
+    for(let i=1;i<edge.path.length;i++){
+      const d = pointToSegDist(x,y, edge.path[i-1], edge.path[i]);
+      if(d<bestD){ bestD=d; best=edge; }
+    }
+  });
+  return best;
+}
 function pointToSegDist(px,py,a,b){
   const [ax,ay]=a,[bx,by]=b;
   const dx=bx-ax, dy=by-ay;
@@ -1518,8 +1599,8 @@ function findNearestNode(rec, x, y, maxDist){
 }
 
 function addNodeOnEdge(rec, x, y){
-  const edge = findNearestEdge(rec, x, y, 25);
-  if(!edge){ log('<span style="color:#ff6b6b">לא נמצאה דופן קרובה מספיק ללחיצה</span>'); return; }
+  const edge = findAbsoluteNearestEdge(rec, x, y);
+  if(!edge){ log('<span style="color:#ff6b6b">לא נמצאה דופן כלשהי ללחיצה</span>'); return; }
 
   // find nearest segment on the edge path
   let bestSegIdx = -1;
@@ -1538,7 +1619,7 @@ function addNodeOnEdge(rec, x, y){
   // check distance to endpoints
   const distToStart = Math.hypot(edge.path[0][0] - projX, edge.path[0][1] - projY);
   const distToEnd = Math.hypot(edge.path[edge.path.length - 1][0] - projX, edge.path[edge.path.length - 1][1] - projY);
-  if (distToStart < 10 || distToEnd < 10) {
+  if (distToStart < 5 || distToEnd < 5) {
     log('<span style="color:#ff6b6b">נקודה קרובה מדי לצומת קיים</span>');
     return;
   }

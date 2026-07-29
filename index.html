@@ -87,86 +87,111 @@
   a.linklike{color:var(--green);cursor:pointer;text-decoration:underline;}
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;}
+
+  /* Localization UI Styles */
+  .lang-switcher {
+    display: flex;
+    gap: 4px;
+  }
+  .lang-switcher button {
+    font-size: 11px;
+    padding: 3px 6px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .lang-switcher button.active-lang {
+    border-color: var(--green);
+    color: var(--green);
+    font-weight: bold;
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>TJ Undulation <span>Analyzer</span></h1>
-    <div class="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
+      <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
+    </div>
+    <div class="lang-switcher">
+      <button id="langHe" onclick="changeLang('he')">עברית</button>
+      <button id="langEn" onclick="changeLang('en')">English</button>
+      <button id="langAr" onclick="changeLang('ar')">العربية</button>
+    </div>
   </header>
 
   <!-- LEFT: images + detection controls -->
   <div id="left">
     <div class="block">
-      <h2>1. תמונות</h2>
+      <h2 data-i18n="lblImages">1. תמונות</h2>
       <input type="file" id="fileInput" accept="image/*" multiple>
       <div id="imgList" style="margin-top:10px;"></div>
     </div>
 
     <div class="block">
-      <h2>2. עיבוד מקדים ובינריזציה</h2>
-      <label class="small">שיטת בינריזציה:</label>
+      <h2 data-i18n="lblBinarization">2. עיבוד מקדים ובינריזציה</h2>
+      <label class="small" data-i18n="lblBinMethod">שיטת בינריזציה:</label>
       <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled>
-        <option value="adaptive">אדפטיבית (מקומית)</option>
-        <option value="global">גלובלית (Otsu)</option>
+        <option value="adaptive" data-i18n="optAdaptive">אדפטיבית (מקומית)</option>
+        <option value="global" data-i18n="optGlobal">גלובלית (Otsu)</option>
       </select>
 
       <div id="panelGlobal" style="display:none;">
-        <label class="small">סף בהירות (ערוץ ירוק): <span id="thVal">—</span></label>
+        <label class="small"><span data-i18n="lblThreshold">סף בהירות (ערוץ ירוק):</span> <span id="thVal">—</span></label>
         <input type="range" id="threshold" min="0" max="255" value="40" disabled>
       </div>
 
       <div id="panelAdaptive">
-        <label class="small">גודל חלון מקומי (px): <span id="adaptSizeVal">41</span></label>
+        <label class="small"><span data-i18n="lblLocalWindow">גודל חלון מקומי (px):</span> <span id="adaptSizeVal">41</span></label>
         <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled>
 
-        <label class="small" style="margin-top:6px;">רגישות / היסט (C): <span id="adaptCVal">7</span></label>
+        <label class="small" style="margin-top:6px;"><span data-i18n="lblSensitivity">רגישות / היסט (C):</span> <span id="adaptCVal">7</span></label>
         <input type="range" id="adaptC" min="-30" max="30" step="1" value="7" disabled>
 
-        <label class="small" style="margin-top:6px;">סף בהירות מינימלי לרקע: <span id="adaptMinThVal">15</span></label>
+        <label class="small" style="margin-top:6px;"><span data-i18n="lblMinThBg">סף בהירות מינימלי לרקע:</span> <span id="adaptMinThVal">15</span></label>
         <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled>
       </div>
 
       <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
         <label class="small" style="display:flex; align-items:center; gap:6px;">
           <input type="checkbox" id="fillHoles" checked disabled>
-          <span>מילוי חורים קטנים בדפנות</span>
+          <span data-i18n="lblFillHoles">מילוי חורים קטנים בדפנות</span>
         </label>
         <div id="panelHoleSize" style="margin-top:4px;">
-          <label class="small">גודל חור מקסימלי (px): <span id="holeSizeVal">50</span></label>
+          <label class="small"><span data-i18n="lblMaxHole">גודל חור מקסימלי (px):</span> <span id="holeSizeVal">50</span></label>
           <input type="range" id="holeSize" min="5" max="500" value="50" disabled>
         </div>
 
         <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
           <input type="checkbox" id="removeIslands" checked disabled>
-          <span>הסרת איי רעש רקע</span>
+          <span data-i18n="lblRemoveIslands">הסרת איי רעש רקע</span>
         </label>
         <div id="panelIslandSize" style="margin-top:4px;">
-          <label class="small">גודל אי מקסימלי (px): <span id="islandSizeVal">100</span></label>
+          <label class="small"><span data-i18n="lblMaxIsland">גודל אי מקסימלי (px):</span> <span id="islandSizeVal">100</span></label>
           <input type="range" id="islandSize" min="10" max="1000" value="100" disabled>
         </div>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <button id="btnPreviewBin" style="width:100%;" disabled>תצוגת סף (בינארי)</button>
+        <button id="btnPreviewBin" style="width:100%;" disabled data-i18n="btnPreviewBin">תצוגת סף (בינארי)</button>
       </div>
     </div>
 
     <div class="block">
-      <h2>3. זיהוי צמתים וגרף</h2>
+      <h2 data-i18n="lblJunctionGraph">3. זיהוי צמתים וגרף</h2>
       <div class="modebar" style="margin-bottom:10px;">
-        <button id="tabClassical" class="active-mode">קלאסי</button>
-        <button id="tabGemini">Gemini API</button>
+        <button id="tabClassical" class="active-mode" data-i18n="tabClassical">קלאסי</button>
+        <button id="tabGemini" data-i18n="tabGemini">Gemini API</button>
       </div>
 
       <div id="panelClassical">
-        <label class="small">רגישות מיזוג צמתים סמוכים (px): <span id="mergeVal">—</span></label>
+        <label class="small"><span data-i18n="lblMergeDist">רגישות מיזוג צמתים סמוכים (px):</span> <span id="mergeVal">—</span></label>
         <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
         <div class="row" style="margin-top:8px;">
-          <button id="btnDetect" class="primary" style="width:100%;" disabled>הרץ זיהוי מלא</button>
+          <button id="btnDetect" class="primary" style="width:100%;" disabled data-i18n="btnDetect">הרץ זיהוי מלא</button>
         </div>
-        <div class="hint">
+        <div class="hint" id="hintClassical" data-i18n="hintClassical">
           תהליך קלאסי בלבד: סף על הערוץ הירוק ← דיקוק לשלד חד-פיקסלי (Zhang-Suen) ←
           הסרת "זיזים" קצרים ← איתור נקודות הסתעפות ← מיזוג נקודות סמוכות ←
           מעקב אחר כל דופן. מהיר, אך עלול לפספס/להכפיל צמתים בתמונות רועשות —
@@ -175,19 +200,19 @@
       </div>
 
       <div id="panelGemini" style="display:none;">
-        <label class="small">מפתח Gemini API (Google AI Studio)</label>
+        <label class="small" data-i18n="lblGeminiKey">מפתח Gemini API (Google AI Studio)</label>
         <input type="password" id="geminiKey" placeholder="AIza..." style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;">
         <div class="row" style="margin-top:8px;">
-          <button id="btnLoadModels">טען רשימת מודלים</button>
+          <button id="btnLoadModels" data-i18n="btnLoadModels">טען רשימת מודלים</button>
         </div>
-        <label class="small">מודל</label>
+        <label class="small" data-i18n="lblGeminiModel">מודל</label>
         <select id="geminiModel" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;" disabled>
-          <option>— טענו רשימת מודלים תחילה —</option>
+          <option data-i18n="optLoadModelsFirst">— טענו רשימת מודלים תחילה —</option>
         </select>
         <div class="row" style="margin-top:8px;">
-          <button id="btnDetectGemini" class="primary" style="width:100%;" disabled>זהה צמתים עם Gemini</button>
+          <button id="btnDetectGemini" class="primary" style="width:100%;" disabled data-i18n="btnDetectGemini">זהה צמתים עם Gemini</button>
         </div>
-        <div class="hint">
+        <div class="hint" id="hintGemini" data-i18n="hintGemini">
           Gemini מקבל את התמונה ומתבקש להחזיר <b>רק</b> את מיקומי הצמתים
           התלת-תאיים (פיקסלים). שלד הדפנות, המעקב אחריהן, וחישוב היחסים
           ממשיכים להתבצע באמצעים קלאסיים בדיוק כמו במצב "קלאסי". המפתח נשמר
@@ -196,19 +221,32 @@
       </div>
     </div>
 
+    <!-- 3.5. Open edges auto-connect controls -->
+    <div class="block" style="border-top:1px solid var(--line); padding-top:12px;">
+      <label class="small" style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+        <input type="checkbox" id="includeIncomplete">
+        <span data-i18n="lblIncludeIncomplete">כלול דפנות לא שלמות בסטטיסטיקה</span>
+      </label>
+      <label class="small"><span data-i18n="lblOpenEdgeRadius">רדיוס חיבור אוטומטי של קצוות (px):</span> <span id="openEdgeRadiusVal">25</span></label>
+      <input type="range" id="openEdgeRadius" min="5" max="150" value="25">
+      <div class="row" style="margin-top:8px;">
+        <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר קצוות פתוחים</button>
+      </div>
+    </div>
+
     <div class="block">
-      <h2>4. עריכה ידנית</h2>
+      <h2 data-i18n="lblManualEdit">4. עריכה ידנית</h2>
       <div class="modebar">
-        <button id="modeSelect" class="active-mode">בחירה</button>
-        <button id="modeAddNode">הוספת צומת</button>
-        <button id="modeRemoveNode">הסרת צומת</button>
-        <button id="modeRedraw">ציור מחדש של דופן</button>
+        <button id="modeSelect" class="active-mode" data-i18n="modeSelect">בחירה</button>
+        <button id="modeAddNode" data-i18n="modeAddNode">הוספת צומת</button>
+        <button id="modeRemoveNode" data-i18n="modeRemoveNode">הסרת צומת</button>
+        <button id="modeRedraw" data-i18n="modeRedraw">ציור מחדש של דופן</button>
       </div>
       <div id="redrawControls" class="row" style="display:none;">
-        <button id="finishRedraw" class="primary">סיים ציור</button>
-        <button id="cancelRedraw">בטל</button>
+        <button id="finishRedraw" class="primary" data-i18n="finishRedraw">סיים ציור</button>
+        <button id="cancelRedraw" data-i18n="cancelRedraw">בטל</button>
       </div>
-      <div class="hint" id="modeHint">
+      <div class="hint" id="modeHint" data-i18n="hintSelect">
         מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.
       </div>
     </div>
@@ -219,45 +257,427 @@
     <div id="canvasWrap">
       <canvas id="base"></canvas>
       <canvas id="overlay"></canvas>
-      <div id="dropHint">גררו תמונה או השתמשו בכפתור "תמונות" משמאל</div>
+      <div id="dropHint" data-i18n="dropHint">גררו תמונה או השתמשו בכפתור "תמונות" משמאל</div>
     </div>
   </div>
 
   <!-- RIGHT: stats, edge table, log -->
   <div id="right">
     <div class="block">
-      <h2>סיכום תמונה נוכחית</h2>
-      <div class="stat"><span>צמתים</span><b id="statNodes">0</b></div>
-      <div class="stat"><span>דפנות</span><b id="statEdges">0</b></div>
-      <div class="stat"><span>יחס ממוצע (undulation ratio)</span><b id="statAvg">—</b></div>
-      <div class="stat"><span>סטיית תקן</span><b id="statStd">—</b></div>
+      <h2 data-i18n="lblCurrentSummary">סיכום תמונה נוכחית</h2>
+      <div class="stat"><span data-i18n="lblNodes">צמתים</span><b id="statNodes">0</b></div>
+      <div class="stat"><span data-i18n="lblEdges">דפנות</span><b id="statEdges">0</b></div>
+      <div class="stat"><span data-i18n="lblAvgRatio">יחס ממוצע (undulation ratio)</span><b id="statAvg">—</b></div>
+      <div class="stat"><span data-i18n="lblStdDev">סטיית תקן</span><b id="statStd">—</b></div>
       <div id="legend">
         <span>1.0</span><div class="grad"></div><span>&ge;1.5</span>
       </div>
       <div class="row" style="margin-top:10px;">
-        <button id="exportCurrent">ייצוא CSV — תמונה זו</button>
-        <button id="exportAll" class="primary">ייצוא CSV — כל התמונות</button>
+        <button id="exportCurrent" data-i18n="exportCurrent">ייצוא CSV — תמונה זו</button>
+        <button id="exportAll" class="primary" data-i18n="exportAll">ייצוא CSV — כל התמונות</button>
       </div>
     </div>
 
     <div class="block" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-      <h2>טבלת דפנות</h2>
+      <h2 data-i18n="lblEdgeTable">טבלת דפנות</h2>
       <div id="edgeTableWrap">
         <table id="edgeTable">
-          <thead><tr><th>#</th><th>אורך בפועל</th><th>מרחק ישר</th><th>יחס</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="thNodes">#</th><th data-i18n="thActual">אורך בפועל</th><th data-i18n="thStraight">מרחק ישר</th><th data-i18n="thRatio">יחס</th><th></th></tr></thead>
           <tbody id="edgeTableBody"></tbody>
         </table>
       </div>
     </div>
 
     <div class="block">
-      <h2>לוג</h2>
+      <h2 data-i18n="lblLog">לוג</h2>
       <div id="log"></div>
     </div>
   </div>
 </div>
 
 <script>
+/* ===================== Localization Dictionary ===================== */
+const translations = {
+  he: {
+    title: "TJ Undulation <span>Analyzer</span>",
+    sub: "כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים",
+    tabClassical: "קלאסי",
+    tabGemini: "Gemini API",
+    modeSelect: "בחירה",
+    modeAddNode: "הוספת צומת",
+    modeRemoveNode: "הסרת צומת",
+    modeRedraw: "ציור מחדש של דופן",
+    finishRedraw: "סיים ציור",
+    cancelRedraw: "בטל",
+    btnLoadModels: "טען רשימת מודלים",
+    btnPreviewBin: "תצוגת סף (בינארי)",
+    btnDetect: "הרץ זיהוי מלא",
+    btnDetectGemini: "זהה צמתים עם Gemini",
+    exportCurrent: "ייצוא CSV — תמונה זו",
+    exportAll: "ייצוא CSV — כל התמונות",
+    dropHint: "גררו תמונה או השתמשו בכפתור \"תמונות\" משמאל",
+    thNodes: "#",
+    thActual: "אורך בפועל",
+    thStraight: "מרחק ישר",
+    thRatio: "יחס",
+    // Labels
+    lblImages: "1. תמונות",
+    lblBinarization: "2. עיבוד מקדים ובינריזציה",
+    lblBinMethod: "שיטת בינריזציה:",
+    optAdaptive: "אדפטיבית (מקומית)",
+    optGlobal: "גלובלית (Otsu)",
+    lblThreshold: "סף בהירות (ערוץ ירוק):",
+    lblLocalWindow: "גודל חלון מקומי (px):",
+    lblSensitivity: "רגישות / היסט (C):",
+    lblMinThBg: "סף בהירות מינימלי לרקע:",
+    lblFillHoles: "מילוי חורים קטנים בדפנות",
+    lblMaxHole: "גודל חור מקסימלי (px):",
+    lblRemoveIslands: "הסרת איי רעש רקע",
+    lblMaxIsland: "גודל אי מקסימלי (px):",
+    lblJunctionGraph: "3. זיהוי צמתים וגרף",
+    lblMergeDist: "רגישות מיזוג צמתים סמוכים (px):",
+    lblGeminiKey: "מפתח Gemini API (Google AI Studio)",
+    lblGeminiModel: "מודל",
+    lblManualEdit: "4. עריכה ידנית",
+    lblCurrentSummary: "סיכום תמונה נוכחית",
+    lblNodes: "צמתים",
+    lblEdges: "דפנות",
+    lblAvgRatio: "יחס ממוצע (undulation ratio)",
+    lblStdDev: "סטיית תקן",
+    lblEdgeTable: "טבלת דפנות",
+    lblLog: "לוג",
+    // Hints
+    hintClassical: "תהליך קלאסי בלבד: סף על הערוץ הירוק ← דיקוק לשלד חד-פיקסלי (Zhang-Suen) ← הסרת \"זיזים\" קצרים ← איתור נקודות הסתעפות ← מיזוג נקודות סמוכות ← מעקב אחר כל דופן. מהיר, אך עלול לפספס/להכפיל צמתים בתמונות רועשות — תקנו ידנית לפי הצורך בכלי העריכה למטה.",
+    hintGemini: "Gemini מקבל את התמונה ומתבקש להחזיר <b>רק</b> את מיקומי הצמתים התלת-תאיים (פיקסלים). שלד הדפנות, המעקב אחריהן, וחישוב היחסים ממשיכים להתבצע באמצעים קלאסיים בדיוק כמו במצב \"קלאסי\". המפתח נשמר רק בדפדפן שלכם (localStorage) ולא נשלח לשום מקום מלבד Google.",
+    hintSelect: "מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.",
+    hintAddNode: "מצב <b>הוספת צומת</b>: לחצו על נקודה על גבי דופן קיימת כדי לפצל אותה לשתי דפנות בנקודה זו.",
+    hintRemoveNode: "מצב <b>הסרת צומת</b>: לחצו על צומת (עיגול צהוב) כדי להסירה. אם יש לה 2 דפנות — הן יתמזגו לדופן אחת.",
+    hintRedraw: "מצב <b>ציור מחדש</b>: בחרו דופן בטבלה, לחצו \"סיים ציור\" בסיום, ולפני כן סמנו נקודות לאורך המסלול הנכון על התמונה.",
+    // New controls for open edges
+    lblIncludeIncomplete: "כלול דפנות לא שלמות בסטטיסטיקה",
+    lblOpenEdgeRadius: "רדיוס חיבור אוטומטי של קצוות (px):",
+    btnConnectOpen: "חבר קצוות פתוחים",
+    // Logs and dialogs
+    logReady: "הכלי מוכן. טענו תמונה כדי להתחיל.",
+    logLoaded: "נטענה תמונה <b>{name}</b> ({w}×{h}px)",
+    logBinAdaptive: "בינריזציה (אדפטיבית)...",
+    logBinGlobal: "בינריזציה (גלובלית בסף={th})...",
+    logSkel: "דיקוק שלד (Zhang-Suen)...",
+    logDetecting: "מתחיל זיהוי אוטומטי (קלאסי)...",
+    logDetected: "זוהו {raw} נקודות הסתעפות גולמיות, מוזגו {merged} זוגות סמוכים ← <b>{nodes}</b> צמתים ו-<b>{edges}</b> דפנות (מרחק מיזוג={dist}px)",
+    logGeminiSending: "שולח תמונה ל-Gemini לזיהוי צמתים תלת-תאיים...",
+    logGeminiReceived: "Gemini החזיר {count} נקודות מועמדות",
+    logGeminiDedup: "בוצע סינון כפילויות של נקודות סמוכות מ-Gemini: {before} ← {after}",
+    logGeminiSkipped: "{count} נקודות לא נמצאו קרוב לשלד ודולגו",
+    logGeminiSuccess: "נבנה גרף: <b>{nodes}</b> צמתים (מ-Gemini) ו-<b>{edges}</b> דפנות (מעקב קלאסי)",
+    logAutoConnect: "חיבור אוטומטי חכם: חוברו {count} קצוות פתוחים לצמתים סמוכים",
+    logAutoConnectGemini: "חיבור אוטומטי חכם (Gemini): חוברו {count} קצוות פתוחים לצמתים סמוכים",
+    logManualEdgeDelete: "דופן {id} נמחקה ידנית",
+    logManualRedrawCancel: "ציור מחדש בוטל",
+    logManualRedrawSuccess: "דופן {id} צוירה מחדש ידנית — אורך חדש {len}px, יחס חדש {ratio}",
+    logManualNodeAdd: "נוסף צומת {nodeId} ידנית — דופן {edgeId} פוצלה ל-{e1} ו-{e2}",
+    logManualNodeRemoveMerge: "צומת {nodeId} הוסר — דפנות מוזגו לדופן חדשה {edgeId}",
+    logManualNodeRemoveDelete: "צומת {nodeId} הוסר ידנית יחד עם {count} דפנות מחוברות",
+    logNoImage: "אין תמונה פעילה",
+    logNoImagesLoaded: "אין תמונות טעונות",
+    logExportingCurrent: "יוצא CSV עבור {name}",
+    logExportingAll: "יוצא CSV מרוכז עבור {count} תמונות",
+    confirmRemoveNode: "הצומת מחובר ל-{count} דפנות. הסרתו תמחק גם את הדפנות המחוברות. להמשיך?",
+    errGeminiKey: "יש להזין מפתח Gemini API קודם",
+    errGeminiLoadModel: "שגיאה בטעינת מודלים: {err}. בדקו שהמפתח תקין ושיש לו הרשאה ל-Generative Language API.",
+    errGeminiDetect: "שגיאה בזיהוי עם Gemini: {err}",
+    errDetect: "שגיאה בזיהוי: {err}",
+    errSelectEdgeFirst: "בחרו קודם דופן מהטבלה במצב בחירה, ואז עברו לציור מחדש",
+    errDrawMinPoints: "יש לסמן לפחות 2 נקודות",
+    errAddNodeNoEdge: "לא נמצאה דופן כלשהי ללחיצה",
+    errAddNodeTooClose: "נקודה קרובה מדי לצומת קיים",
+    optLoadModelsFirst: "— טענו רשימת מודלים תחילה —",
+    logModelsLoaded: "נטענו {count} מודלים זמינים",
+    logLoadingModels: "טוען רשימת מודלים מ-Google...",
+    logPreviewBinOn: "תצוגת סף בינארי הופעלה",
+    logPreviewBinOff: "תצוגת סף בינארי כובתה",
+  },
+  en: {
+    title: "TJ Undulation <span>Analyzer</span>",
+    sub: "Quantification of cell-cell junction and boundary undulations (boundary stains like ZO-1, etc.) — actual path length / straight distance between tri-cellular junctions",
+    tabClassical: "Classical",
+    tabGemini: "Gemini API",
+    modeSelect: "Select",
+    modeAddNode: "Add Junction",
+    modeRemoveNode: "Remove Junction",
+    modeRedraw: "Redraw Boundary",
+    finishRedraw: "Finish Redraw",
+    cancelRedraw: "Cancel",
+    btnLoadModels: "Load Models",
+    btnPreviewBin: "Threshold Preview (Binary)",
+    btnDetect: "Run Full Detection",
+    btnDetectGemini: "Detect Junctions with Gemini",
+    exportCurrent: "Export CSV — This Image",
+    exportAll: "Export CSV — All Images",
+    dropHint: "Drag an image here or use the 'Images' button on the left",
+    thNodes: "#",
+    thActual: "Actual Length",
+    thStraight: "Straight Dist.",
+    thRatio: "Ratio",
+    // Labels
+    lblImages: "1. Images",
+    lblBinarization: "2. Preprocessing & Binarization",
+    lblBinMethod: "Binarization Method:",
+    optAdaptive: "Adaptive (Local)",
+    optGlobal: "Global (Otsu)",
+    lblThreshold: "Threshold (Green Channel):",
+    lblLocalWindow: "Local Window Size (px):",
+    lblSensitivity: "Sensitivity / Offset (C):",
+    lblMinThBg: "Min Background Threshold:",
+    lblFillHoles: "Fill small holes in boundaries",
+    lblMaxHole: "Max Hole Size (px):",
+    lblRemoveIslands: "Remove background noise islands",
+    lblMaxIsland: "Max Island Size (px):",
+    lblJunctionGraph: "3. Junction Detection & Graph",
+    lblMergeDist: "Merge Distance Threshold (px):",
+    lblGeminiKey: "Gemini API Key (Google AI Studio)",
+    lblGeminiModel: "Model",
+    lblManualEdit: "4. Manual Editing",
+    lblCurrentSummary: "Current Image Summary",
+    lblNodes: "Junctions",
+    lblEdges: "Boundaries",
+    lblAvgRatio: "Mean Undulation Ratio",
+    lblStdDev: "Standard Deviation",
+    lblEdgeTable: "Boundary Table",
+    lblLog: "Log",
+    // Hints
+    hintClassical: "Classical process only: Green channel thresholding → single-pixel skeletonization (Zhang-Suen) → prune short spurs → branch point detection → merge close points → trace boundaries. Fast, but may miss/duplicate junctions in noisy images — edit manually below if needed.",
+    hintGemini: "Gemini receives the image and returns <b>only</b> the tri-cellular junction coordinates (pixels). Boundary skeletonization, tracing, and ratio calculations are still performed classically. The key is saved locally in your browser (localStorage) and never sent anywhere else except Google.",
+    hintSelect: "<b>Select</b> mode: Clicking a boundary highlights it and displays its metrics in the right table.",
+    hintAddNode: "<b>Add Junction</b> mode: Click on any existing boundary to split it into two separate boundaries at that point.",
+    hintRemoveNode: "<b>Remove Junction</b> mode: Click on a junction (yellow circle) to remove it. If it connects exactly two boundaries, they will merge into one.",
+    hintRedraw: "<b>Redraw</b> mode: Select a boundary in the table, click 'Finish Redraw' when done, and click points along the correct path on the image first.",
+    // New controls for open edges
+    lblIncludeIncomplete: "Include incomplete boundaries in statistics",
+    lblOpenEdgeRadius: "Auto-connect Open Edges Radius (px):",
+    btnConnectOpen: "Connect Open Edges",
+    // Logs and dialogs
+    logReady: "Tool is ready. Load an image to start.",
+    logLoaded: "Loaded image <b>{name}</b> ({w}×{h}px)",
+    logBinAdaptive: "Binarizing (Adaptive)...",
+    logBinGlobal: "Binarizing (Global with threshold={th})...",
+    logSkel: "Thinning skeleton (Zhang-Suen)...",
+    logDetecting: "Starting auto-detection (Classical)...",
+    logDetected: "Detected {raw} raw branch points, merged {merged} close pairs → <b>{nodes}</b> junctions and <b>{edges}</b> boundaries (merge dist={dist}px)",
+    logGeminiSending: "Sending image to Gemini to identify tri-cellular junctions...",
+    logGeminiReceived: "Gemini returned {count} candidate points",
+    logGeminiDedup: "Deduplicated close points from Gemini: {before} → {after}",
+    logGeminiSkipped: "Skipped {count} points because they were too far from the skeleton",
+    logGeminiSuccess: "Built graph: <b>{nodes}</b> junctions (from Gemini) and <b>{edges}</b> boundaries (classically traced)",
+    logAutoConnect: "Smart Auto-connect: Connected {count} open edges to nearby junctions",
+    logAutoConnectGemini: "Smart Auto-connect (Gemini): Connected {count} open edges to nearby junctions",
+    logManualEdgeDelete: "Boundary {id} deleted manually",
+    logManualRedrawCancel: "Redraw canceled",
+    logManualRedrawSuccess: "Boundary {id} redrawn manually — new length {len}px, new ratio {ratio}",
+    logManualNodeAdd: "Added junction {nodeId} manually — split boundary {edgeId} into {e1} and {e2}",
+    logManualNodeRemoveMerge: "Removed junction {nodeId} — merged boundaries into new boundary {edgeId}",
+    logManualNodeRemoveDelete: "Removed junction {nodeId} manually along with {count} connected boundaries",
+    logNoImage: "No active image",
+    logNoImagesLoaded: "No images loaded",
+    logExportingCurrent: "Exporting CSV for {name}",
+    logExportingAll: "Exporting consolidated CSV for {count} images",
+    confirmRemoveNode: "This junction is connected to {count} boundaries. Removing it will also delete those boundaries. Continue?",
+    errGeminiKey: "Please enter a Gemini API Key first",
+    errGeminiLoadModel: "Error loading models: {err}. Make sure your key is valid and has permissions for the Generative Language API.",
+    errGeminiDetect: "Error detecting with Gemini: {err}",
+    errDetect: "Detection error: {err}",
+    errSelectEdgeFirst: "Please select a boundary from the table in Select mode first, then switch to Redraw mode",
+    errDrawMinPoints: "Please plot at least 2 points",
+    errAddNodeNoEdge: "Could not find any boundary near the click",
+    errAddNodeTooClose: "Clicked point is too close to an existing junction",
+    optLoadModelsFirst: "— Load model list first —",
+    logModelsLoaded: "Loaded {count} available models",
+    logLoadingModels: "Loading model list from Google...",
+    logPreviewBinOn: "Binary preview turned ON",
+    logPreviewBinOff: "Binary preview turned OFF",
+  },
+  ar: {
+    title: "محلل <span>تموج الموصلات الخلوية</span>",
+    sub: "تكميم تموج موصلات الخلايا وحدودها (صبغات الحدود مثل ZO-1، إلخ) — طول المسار الفعلي / المسافة المستقيمة بين الموصلات ثلاثية الخلايا",
+    tabClassical: "تقليدي",
+    tabGemini: "واجهة Gemini",
+    modeSelect: "تحديد",
+    modeAddNode: "إضافة موصل",
+    modeRemoveNode: "إزالة موصل",
+    modeRedraw: "إعادة رسم الحد",
+    finishRedraw: "إنهاء الرسم",
+    cancelRedraw: "إلغاء",
+    btnLoadModels: "تحميل النماذج",
+    btnPreviewBin: "معاينة العتبة (ثنائي)",
+    btnDetect: "تشغيل الكشف الكامل",
+    btnDetectGemini: "كشف الموصلات عبر Gemini",
+    exportCurrent: "تصدير CSV — هذه الصورة",
+    exportAll: "تصدير CSV — جميع الصور",
+    dropHint: "اسحب صورة هنا أو استخدم زر \"الصور\" على اليسار",
+    thNodes: "#",
+    thActual: "الطول الفعلي",
+    thStraight: "المسافة المستقيمة",
+    thRatio: "النسبة",
+    // Labels
+    lblImages: "١. الصور",
+    lblBinarization: "٢. المعالجة المسبقة والتقسيم الثنائي",
+    lblBinMethod: "طريقة التقسيم الثنائي:",
+    optAdaptive: "تكيفي (محيطي)",
+    optGlobal: "عالمي (أوتسو)",
+    lblThreshold: "عتبة السطوع (القناة الخضراء):",
+    lblLocalWindow: "حجم النافذة المحلية (بكسل):",
+    lblSensitivity: "الحساسية / الإزاحة (C):",
+    lblMinThBg: "الحد الأدنى لعتبة الخلفية:",
+    lblFillHoles: "ملء الثقوب الصغيرة في الحدود",
+    lblMaxHole: "الحد الأقصى لحجم الثقب (بكسل):",
+    lblRemoveIslands: "إزالة جزر ضوضاء الخلفية",
+    lblMaxIsland: "الحد الأقصى لحجم الجزيرة (بكسل):",
+    lblJunctionGraph: "٣. كشف الموصلات والرسم البياني",
+    lblMergeDist: "عتبة دمج الموصلات المتجاورة (بكسل):",
+    lblGeminiKey: "مفتاح واجهة Gemini (Google AI Studio)",
+    lblGeminiModel: "النموذج",
+    lblManualEdit: "٤. التحرير اليدوي",
+    lblCurrentSummary: "ملخص الصورة الحالية",
+    lblNodes: "الموصلات",
+    lblEdges: "الحدود",
+    lblAvgRatio: "متوسط نسبة التموج",
+    lblStdDev: "الانحراف المعياري",
+    lblEdgeTable: "جدول الحدود",
+    lblLog: "السجل",
+    // Hints
+    hintClassical: "العملية التقليدية فقط: تحديد العتبة للقناة الخضراء ← ترقيق الهيكل إلى بكسل واحد (تشانغ-سوين) ← تقليم الزوائد القصيرة ← اكتشاف نقاط التفرع ← دمج النقاط القريبة ← تتبع الحدود. سريع، ولكنه قد يفوت/يضاعف الموصلات في الصور المليئة بالضوضاء — عدلها يدويًا أدناه إذا لزم الأمر.",
+    hintGemini: "يتلقى Gemini الصورة ويُطلب منه إرجاع إحداثيات الموصلات ثلاثية الخلايا (بكسل) <b>فقط</b>. يستمر ترقيق الهيكل وتتبع الحدود وحساب النسب باستخدام الطرق التقليدية كما في الوضع التقليدي. يتم حفظ المفتاح محليًا في متصفحك (localStorage) ولا يتم إرساله إلى أي مكان سوى Google.",
+    hintSelect: "وضع <b>التحديد</b>: النقر على حد يبرزه ويعرض مقاييسه في الجدول الأيمن.",
+    hintAddNode: "وضع <b>إضافة موصل</b>: انقر على أي حد موجود لتقسيمه إلى حدين منفصلين عند تلك النقطة.",
+    hintRemoveNode: "وضع <b>إزالة موصل</b>: انقر على موصل (دائرة صفراء) لإزالته. إذا كان يربط بين حدين بالضبط، فسيتم دمجها في حد واحد.",
+    hintRedraw: "وضع <b>إعادة الرسم</b>: حدد حدًا في الجدول، وانقر على 'إنهاء الرسم' عند الانتهاء، وانقر أولاً على نقاط على طول المسار الصحيح في الصورة.",
+    // New controls for open edges
+    lblIncludeIncomplete: "تضمين الحدود غير المكتملة في الإحصاءات",
+    lblOpenEdgeRadius: "نطاق التوصيل التلقائي للأطراف المفتوحة (بكسل):",
+    btnConnectOpen: "توصيل الأطراف المفتوحة",
+    // Logs and dialogs
+    logReady: "الأداة جاهزة. قم بتحميل صورة للبدء.",
+    logLoaded: "تم تحميل الصورة <b>{name}</b> ({w}×{h} بكسل)",
+    logBinAdaptive: "التقسيم الثنائي التكيفي...",
+    logBinGlobal: "التقسيم الثنائي العالمي بعتبة={th}...",
+    logSkel: "ترقيق الهيكل (تشانغ-سوين)...",
+    logDetecting: "بدء الكشف التلقائي (التقليدي)...",
+    logDetected: "تم الكشف عن {raw} نقاط تفرع خام، وتم دمج {merged} من الأزواج القريبة ← <b>{nodes}</b> موصلات و<b>{edges}</b> حدود (مسافة الدمج={dist} بكسل)",
+    logGeminiSending: "إرسال الصورة إلى Gemini لتحديد الموصلات ثلاثية الخلايا...",
+    logGeminiReceived: "أعاد Gemini {count} نقاط مرشحة",
+    logGeminiDedup: "إزالة النقاط المكررة القريبة من Gemini: {before} ← {after}",
+    logGeminiSkipped: "تم تخطي {count} نقاط لأنها كانت بعيدة جدًا عن الهيكل",
+    logGeminiSuccess: "تم بناء الرسم البياني: <b>{nodes}</b> موصلات (من Gemini) و<b>{edges}</b> حدود (تم تتبعها كلاسيكيًا)",
+    logAutoConnect: "توصيل تلقائي ذكي: تم توصيل {count} من الحدود المفتوحة بالموصلات القريبة",
+    logAutoConnectGemini: "توصيل تلقائي ذكي (Gemini): تم توصيل {count} من الحدود المفتوحة بالموصلات القريبة",
+    logManualEdgeDelete: "تم حذف الحد {id} يدويًا",
+    logManualRedrawCancel: "تم إلغاء إعادة الرسم",
+    logManualRedrawSuccess: "تم إعادة رسم الحد {id} يدويًا — الطول الجديد {len} بكسل، والنسبة الجديدة {ratio}",
+    logManualNodeAdd: "تم إضافة موصل {nodeId} يدويًا — تم تقسيم الحد {edgeId} إلى {e1} و{e2}",
+    logManualNodeRemoveMerge: "تم إزالة الموصل {nodeId} — تم دمج الحدود في الحد الجديد {edgeId}",
+    logManualNodeRemoveDelete: "تم إزالة الموصل {nodeId} يدويًا مع {count} من الحدود المتصلة",
+    logNoImage: "لا توجد صورة نشطة",
+    logNoImagesLoaded: "لم يتم تحميل أي صور",
+    logExportingCurrent: "تصدير CSV لـ {name}",
+    logExportingAll: "تصدير ملف CSV مجمع لـ {count} صور",
+    confirmRemoveNode: "هذا الموصل متصل بـ {count} حدود. إزالته ستؤدي أيضًا إلى حذف تلك الحدود. هل ترغب في الاستمرار؟",
+    errGeminiKey: "يرجى إدخال مفتاح واجهة Gemini أولاً",
+    errGeminiLoadModel: "خطأ في تحميل النماذج: {err}. تأكد من صحة مفتاحك وصلاحياته لواجهة Generative Language API.",
+    errGeminiDetect: "خطأ أثناء الكشف بواسطة Gemini: {err}",
+    errDetect: "خطأ أثناء الكشف: {err}",
+    errSelectEdgeFirst: "يرجى تحديد حد من الجدول في وضع التحديد أولاً، ثم الانتقال إلى وضع إعادة الرسم",
+    errDrawMinPoints: "يرجى تحديد نقطتين على الأقل",
+    errAddNodeNoEdge: "لم يتم العثور على أي حد بالقرب من النقرة",
+    errAddNodeTooClose: "النقطة المحددة قريبة جدًا من موصل موجود",
+    optLoadModelsFirst: "— قم بتحميل قائمة النماذج أولاً —",
+    logModelsLoaded: "تم تحميل {count} من النماذج المتاحة",
+    logLoadingModels: "تحميل قائمة النماذج من Google...",
+    logPreviewBinOn: "تم تشغيل معاينة العتبة الثنائية",
+    logPreviewBinOff: "تم إيقاف معاينة العتبة الثنائية",
+  }
+};
+
+let currentLang = localStorage.getItem('tjLang') || 'he';
+
+function applyTranslations(lang) {
+  currentLang = lang;
+  localStorage.setItem('tjLang', lang);
+
+  // Update HTML tag dir & lang attributes
+  document.documentElement.lang = lang;
+  if (lang === 'en') {
+    document.documentElement.dir = 'ltr';
+    document.getElementById('edgeTable').style.textAlign = 'left';
+  } else {
+    document.documentElement.dir = 'rtl';
+    document.getElementById('edgeTable').style.textAlign = 'right';
+  }
+
+  // Update active style in switcher
+  document.getElementById('langHe').className = lang === 'he' ? 'active-lang' : '';
+  document.getElementById('langEn').className = lang === 'en' ? 'active-lang' : '';
+  document.getElementById('langAr').className = lang === 'ar' ? 'active-lang' : '';
+
+  // Update static text elements
+  const dict = translations[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) {
+      // Use innerHTML for titles with spans or hints with bold styling
+      if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err')) {
+        el.innerHTML = dict[key];
+      } else {
+        el.textContent = dict[key];
+      }
+    }
+  });
+
+  // Update dynamic values/placeholders
+  if (lang === 'en') {
+    els.geminiKey.placeholder = 'AIza...';
+  } else if (lang === 'ar') {
+    els.geminiKey.placeholder = 'مفتاح API...';
+  } else {
+    els.geminiKey.placeholder = 'AIza...';
+  }
+
+  // Reload current UI panels
+  const rec = activeImg();
+  if (rec) {
+    els.thVal.textContent = rec.threshold;
+    els.adaptSizeVal.textContent = rec.adaptSize;
+    els.adaptCVal.textContent = rec.adaptC;
+    els.adaptMinThVal.textContent = rec.adaptMinTh;
+    els.holeSizeVal.textContent = rec.holeSize;
+    els.islandSizeVal.textContent = rec.islandSize;
+    els.mergeVal.textContent = rec.mergeDist;
+  } else {
+    // Refresh Gemini select placeholder when no models loaded
+    if (els.geminiModel.disabled) {
+      els.geminiModel.innerHTML = `<option>${dict.optLoadModelsFirst}</option>`;
+    }
+  }
+
+  // Refresh active mode descriptions
+  setMode(state.mode);
+
+  // Refresh table and stats
+  updateStatsPanel();
+  renderEdgeTable();
+}
+
+function changeLang(lang) {
+  applyTranslations(lang);
+}
+
+function getI18nStr(key, params = {}) {
+  let str = translations[currentLang][key] || translations['he'][key] || key;
+  Object.keys(params).forEach(p => {
+    str = str.replace(`{${p}}`, params[p]);
+  });
+  return str;
+}
+
 /* ===================== State ===================== */
 const state = {
   images: [],      // {id,name,width,height,imgData,binary,skeleton,nodes,edges,threshold,nextNodeId,nextEdgeId}
@@ -322,6 +742,11 @@ const els = {
   modeHint: document.getElementById('modeHint'),
   exportCurrent: document.getElementById('exportCurrent'),
   exportAll: document.getElementById('exportAll'),
+  // New Open edge connect elements
+  includeIncomplete: document.getElementById('includeIncomplete'),
+  openEdgeRadius: document.getElementById('openEdgeRadius'),
+  openEdgeRadiusVal: document.getElementById('openEdgeRadiusVal'),
+  btnConnectOpen: document.getElementById('btnConnectOpen'),
 };
 
 const baseCtx = els.base.getContext('2d');
@@ -385,7 +810,7 @@ function loadFile(file){
     state.images.push(rec);
     state.activeId = rec.id;
     URL.revokeObjectURL(url);
-    log(`נטענה תמונה <b>${file.name}</b> (${w}×${h}px)`);
+    log(getI18nStr('logLoaded', {name: file.name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
   };
@@ -416,7 +841,17 @@ function refreshImgList(){
   state.images.forEach(rec=>{
     const div = document.createElement('div');
     div.className = 'imgItem'+(rec.id===state.activeId?' active':'');
-    const avg = rec.edges.length ? (rec.edges.reduce((s,e)=>s+e.ratio,0)/rec.edges.length).toFixed(3) : '—';
+
+    // Calculate based on toggle
+    const validEdges = rec.edges.filter(e => {
+      if (els.includeIncomplete.checked) {
+        return isFinite(e.ratio);
+      } else {
+        return !e.incomplete && isFinite(e.ratio);
+      }
+    });
+
+    const avg = validEdges.length ? (validEdges.reduce((s,e)=>s+e.ratio,0)/validEdges.length).toFixed(3) : '—';
     div.innerHTML = `<span class="name">${rec.name}</span><span class="ratio">${avg}</span>`;
     div.onclick = ()=> setActiveImage(rec.id);
     els.imgList.appendChild(div);
@@ -568,10 +1003,10 @@ els.btnPreviewBin.addEventListener('click', ()=>{
   state.showBinary = !state.showBinary;
   if(state.showBinary){
     els.btnPreviewBin.classList.add('active-mode');
-    log(`תצוגת סף בינארי הופעלה`);
+    log(getI18nStr('logPreviewBinOn'));
   } else {
     els.btnPreviewBin.classList.remove('active-mode');
-    log(`תצוגת סף בינארי כובתה`);
+    log(getI18nStr('logPreviewBinOff'));
   }
   drawOverlay();
 });
@@ -837,10 +1272,10 @@ function degreeMap(skel, w, h){
 }
 
 function detectGraph(rec){
-  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבית' : `גלובלית בסף=${rec.threshold}`;
-  log(`בינריזציה (${modeStr})...`);
+  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : `${getI18nStr('optGlobal')} (th=${rec.threshold})`;
+  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
   const bin = binarize(rec);
-  log('דיקוק שלד (Zhang-Suen)...');
+  log(getI18nStr('logSkel'));
   const skel = thin(bin, rec.width, rec.height);
   const w=rec.width, h=rec.height;
   const spurLen = Math.max(6, Math.round(Math.min(w,h)/80));
@@ -880,9 +1315,10 @@ function detectGraph(rec){
   rec.nextEdgeId = edges.length+1;
 
   // Connect incomplete edges that end close to any existing node
-  const connectedCount = connectIncompleteEdges(rec, 25);
+  const rVal = parseInt(els.openEdgeRadius.value, 10);
+  const connectedCount = connectIncompleteEdges(rec, rVal);
   if (connectedCount > 0) {
-    log(`חיבור אוטומטי חכם: חוברו ${connectedCount} קצוות פתוחים (Incomplete) לצמתים סמוכים`);
+    log(getI18nStr('logAutoConnect', {count: connectedCount}));
   }
 
   // fine skeleton texture / staining ruffles create clusters of nearby branch
@@ -890,7 +1326,7 @@ function detectGraph(rec){
   // nodes connected by a very short traced edge into one.
   const mergedCount = mergeCloseNodes(rec, rec.mergeDist);
   rec.detected = true;
-  log(`זוהו ${nodes.length} נקודות הסתעפות גולמיות, מוזגו ${mergedCount} זוגות סמוכים ← <b>${rec.nodes.length}</b> צמתים ו-<b>${rec.edges.length}</b> דפנות (מרחק מיזוג=${rec.mergeDist}px)`);
+  log(getI18nStr('logDetected', {raw: nodes.length, merged: mergedCount, nodes: rec.nodes.length, edges: rec.edges.length, dist: rec.mergeDist}));
 }
 
 function connectIncompleteEdges(rec, maxDist) {
@@ -1081,12 +1517,12 @@ function pathLength(path){
 els.btnDetect.addEventListener('click', ()=>{
   const rec = activeImg(); if(!rec) return;
   els.btnDetect.disabled = true;
-  log('מתחיל זיהוי אוטומטי (קלאסי)...');
+  log(getI18nStr('logDetecting'));
   setTimeout(()=>{ // let UI update before heavy compute
     try{
       detectGraph(rec);
     } catch(err){
-      log(`<span style="color:#ff6b6b">שגיאה בזיהוי: ${err.message}</span>`);
+      log(`<span style="color:#ff6b6b">${getI18nStr('errDetect', {err: err.message})}</span>`);
       console.error(err);
     }
     els.btnDetect.disabled = false;
@@ -1100,16 +1536,16 @@ els.btnDetect.addEventListener('click', ()=>{
 /* ===================== Gemini node detection ===================== */
 els.btnLoadModels.addEventListener('click', async ()=>{
   const key = els.geminiKey.value.trim();
-  if(!key){ log('<span style="color:#ff6b6b">יש להזין מפתח Gemini API קודם</span>'); return; }
+  if(!key){ log(`<span style="color:#ff6b6b">${getI18nStr('errGeminiKey')}</span>`); return; }
   localStorage.setItem('tjGeminiKey', key);
   els.btnLoadModels.disabled = true;
-  log('טוען רשימת מודלים מ-Google...');
+  log(getI18nStr('logLoadingModels'));
   try{
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const models = (data.models||[]).filter(m=> (m.supportedGenerationMethods||[]).includes('generateContent'));
-    if(!models.length) throw new Error('לא נמצאו מודלים תומכי generateContent');
+    if(!models.length) throw new Error('No compatible generateContent models found');
     els.geminiModel.innerHTML = '';
     models.forEach(m=>{
       const opt = document.createElement('option');
@@ -1121,10 +1557,10 @@ els.btnLoadModels.addEventListener('click', async ()=>{
     const flashIdx = models.findIndex(m=> /flash/i.test(m.name));
     if(flashIdx>=0) els.geminiModel.selectedIndex = flashIdx;
     els.geminiModel.disabled = false;
-    log(`נטענו ${models.length} מודלים זמינים`);
+    log(getI18nStr('logModelsLoaded', {count: models.length}));
     els.btnDetectGemini.disabled = !(activeImg());
   } catch(err){
-    log(`<span style="color:#ff6b6b">שגיאה בטעינת מודלים: ${err.message}. בדקו שהמפתח תקין ושיש לו הרשאה ל-Generative Language API.</span>`);
+    log(`<span style="color:#ff6b6b">${getI18nStr('errGeminiLoadModel', {err: err.message})}</span>`);
   }
   els.btnLoadModels.disabled = false;
 });
@@ -1171,10 +1607,10 @@ Return ONLY a strict JSON array (without any markdown code block formatting, mar
   const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
     data.candidates[0].content.parts && data.candidates[0].content.parts.map(p=>p.text||'').join('')) || '';
   const s = text.indexOf('['), e = text.lastIndexOf(']');
-  if(s===-1 || e===-1 || e<s) throw new Error('לא התקבל JSON תקין מ-Gemini: '+text.slice(0,200));
+  if(s===-1 || e===-1 || e<s) throw new Error('No valid JSON returned from Gemini: '+text.slice(0,200));
   let points;
   try{ points = JSON.parse(text.slice(s, e+1)); }
-  catch(err){ throw new Error('שגיאת פענוח JSON: '+err.message); }
+  catch(err){ throw new Error('JSON parse error: '+err.message); }
   return points.filter(p=> typeof p.x==='number' && typeof p.y==='number');
 }
 
@@ -1238,17 +1674,17 @@ function localBlobAround(skel, w, h, sx, sy, radius){
 }
 
 async function detectGraphWithGemini(rec, apiKey, modelName){
-  const modeStr = rec.binMethod === 'adaptive' ? 'אדפטיבית' : `גלובלית בסף=${rec.threshold}`;
-  log(`בינריזציה ובניית שלד (${modeStr})...`);
+  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : `${getI18nStr('optGlobal')} (th=${rec.threshold})`;
+  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
   const bin = binarize(rec);
   const skel = thin(bin, rec.width, rec.height);
   const spurLen = Math.max(6, Math.round(Math.min(rec.width,rec.height)/80));
   pruneSpurs(skel, rec.width, rec.height, spurLen);
   rec.binary = bin; rec.skeleton = skel;
 
-  log('שולח תמונה ל-Gemini לזיהוי צמתים תלת-תאיים...');
+  log(getI18nStr('logGeminiSending'));
   let points = await callGeminiForNodes(rec, apiKey, modelName);
-  log(`Gemini החזיר ${points.length} נקודות מועמדות`);
+  log(getI18nStr('logGeminiReceived', {count: points.length}));
 
   // Deduplicate points returned by Gemini that are very close to each other (e.g., within 15px)
   const deduped = [];
@@ -1257,7 +1693,7 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
     if (!isClose) deduped.push(p);
   });
   if (points.length !== deduped.length) {
-    log(`בוצע סינון כפילויות של נקודות סמוכות מ-Gemini: ${points.length} ← ${deduped.length}`);
+    log(getI18nStr('logGeminiDedup', {before: points.length, after: deduped.length}));
     points = deduped;
   }
 
@@ -1277,7 +1713,7 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
     nodes.push(node);
     blob.forEach(([x,y])=> pixelClusterId.set(y*w+x, node.id));
   });
-  if(skipped) log(`<span style="color:#ff6b6b">${skipped} נקודות לא נמצאו קרוב לשלד ודולגו</span>`);
+  if(skipped) log(`<span style="color:#ff6b6b">${getI18nStr('logGeminiSkipped', {count: skipped})}</span>`);
   rec.nextNodeId = nodes.length+1;
 
   const edges = traceEdges(skel, w, h, deg, nodes, pixelClusterId);
@@ -1286,25 +1722,26 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   rec.nextEdgeId = edges.length+1;
 
   // Connect incomplete edges that end close to any existing node
-  const connectedCount = connectIncompleteEdges(rec, 25);
+  const rVal = parseInt(els.openEdgeRadius.value, 10);
+  const connectedCount = connectIncompleteEdges(rec, rVal);
   if (connectedCount > 0) {
-    log(`חיבור אוטומטי חכם (Gemini): חוברו ${connectedCount} קצוות פתוחים (Incomplete) לצמתים סמוכים`);
+    log(getI18nStr('logAutoConnectGemini', {count: connectedCount}));
   }
 
   rec.detected = true;
-  log(`נבנה גרף: <b>${nodes.length}</b> צמתים (מ-Gemini) ו-<b>${edges.length}</b> דפנות (מעקב קלאסי)`);
+  log(getI18nStr('logGeminiSuccess', {nodes: nodes.length, edges: edges.length}));
 }
 
 els.btnDetectGemini.addEventListener('click', async ()=>{
   const rec = activeImg(); if(!rec) return;
   const key = els.geminiKey.value.trim();
   const modelName = els.geminiModel.value;
-  if(!key || !modelName){ log('<span style="color:#ff6b6b">יש להזין מפתח ולטעון רשימת מודלים קודם</span>'); return; }
+  if(!key || !modelName){ log(`<span style="color:#ff6b6b">${getI18nStr('errGeminiKey')}</span>`); return; }
   els.btnDetectGemini.disabled = true;
   try{
     await detectGraphWithGemini(rec, key, modelName);
   } catch(err){
-    log(`<span style="color:#ff6b6b">שגיאה בזיהוי עם Gemini: ${err.message}</span>`);
+    log(`<span style="color:#ff6b6b">${getI18nStr('errGeminiDetect', {err: err.message})}</span>`);
     console.error(err);
   }
   els.btnDetectGemini.disabled = false;
@@ -1372,7 +1809,7 @@ function drawOverlay(){
     }
     ovCtx.beginPath();
     edge.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
-    ovCtx.strokeStyle = edge.incomplete ? '#555' : ratioColor(edge.ratio);
+    ovCtx.strokeStyle = edge.incomplete ? ratioColor(edge.ratio) : ratioColor(edge.ratio);
     ovCtx.lineWidth = 2;
     ovCtx.setLineDash(edge.incomplete? [4,3] : []);
     ovCtx.stroke();
@@ -1400,7 +1837,7 @@ function drawOverlay(){
     // 3. Draw the original undulation heatmap color at the very center to keep its measurement visible
     ovCtx.beginPath();
     selectedEdgeObj.path.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
-    ovCtx.strokeStyle = selectedEdgeObj.incomplete ? '#555' : ratioColor(selectedEdgeObj.ratio);
+    ovCtx.strokeStyle = ratioColor(selectedEdgeObj.ratio);
     ovCtx.lineWidth = 2;
     ovCtx.stroke();
   }
@@ -1431,7 +1868,15 @@ function updateStatsPanel(){
   const rec = activeImg();
   if(!rec){ els.statNodes.textContent='0'; els.statEdges.textContent='0';
     els.statAvg.textContent='—'; els.statStd.textContent='—'; return; }
-  const valid = rec.edges.filter(e=>!e.incomplete && isFinite(e.ratio));
+
+  const valid = rec.edges.filter(e => {
+    if (els.includeIncomplete.checked) {
+      return isFinite(e.ratio);
+    } else {
+      return !e.incomplete && isFinite(e.ratio);
+    }
+  });
+
   els.statNodes.textContent = rec.nodes.length;
   els.statEdges.textContent = rec.edges.length;
   if(valid.length){
@@ -1451,11 +1896,16 @@ function renderEdgeTable(){
   rec.edges.forEach((e,i)=>{
     const tr = document.createElement('tr');
     if(e.id===state.selectedEdge) tr.className='sel';
+
+    const displayStraight = e.n2 ? e.straight.toFixed(1) : e.straight.toFixed(1);
+    const displayRatio = isFinite(e.ratio) ? e.ratio.toFixed(3) : '—';
+    const deleteText = currentLang === 'en' ? 'Delete' : (currentLang === 'ar' ? 'حذف' : 'מחק');
+
     tr.innerHTML = `<td>${i+1}${e.incomplete?' ⚠':''}${e.manual?' ✎':''}</td>
       <td>${e.length.toFixed(1)}</td>
-      <td>${e.n2? e.straight.toFixed(1) : '—'}</td>
-      <td>${isFinite(e.ratio)&&e.n2? e.ratio.toFixed(3):'—'}</td>
-      <td><a class="linklike" data-del="${e.id}">מחק</a></td>`;
+      <td>${displayStraight}</td>
+      <td>${displayRatio}</td>
+      <td><a class="linklike" data-del="${e.id}">${deleteText}</a></td>`;
     tr.querySelector('td').onclick = ()=> selectEdge(e.id);
     tr.querySelectorAll('td')[1].onclick = ()=> selectEdge(e.id);
     tr.querySelectorAll('td')[2].onclick = ()=> selectEdge(e.id);
@@ -1474,7 +1924,7 @@ function selectEdge(id){
 function deleteEdge(id){
   const rec = activeImg(); if(!rec) return;
   rec.edges = rec.edges.filter(e=>e.id!==id);
-  log(`דופן ${id} נמחקה ידנית`);
+  log(getI18nStr('logManualEdgeDelete', {id}));
   if(state.selectedEdge===id) state.selectedEdge=null;
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 }
@@ -1484,13 +1934,14 @@ function setMode(mode){
   state.mode = mode;
   [els.modeSelect,els.modeAddNode,els.modeRemoveNode,els.modeRedraw].forEach(b=>b.classList.remove('active-mode'));
   ({select:els.modeSelect, addnode:els.modeAddNode, removenode:els.modeRemoveNode, redraw:els.modeRedraw})[mode].classList.add('active-mode');
-  const hints = {
-    select: 'מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.',
-    addnode: 'מצב <b>הוספת צומת</b>: לחצו על נקודה על גבי דופן קיימת כדי לפצל אותה לשתי דפנות בנקודה זו.',
-    removenode: 'מצב <b>הסרת צומת</b>: לחצו על צומת (עיגול צהוב) כדי להסירה. אם יש לה 2 דפנות — הן יתמזגו לדופן אחת.',
-    redraw: 'מצב <b>ציור מחדש</b>: בחרו דופן בטבלה, לחצו "סיים ציור" בסיום, ולפני כן סמנו נקודות לאורך המסלול הנכון על התמונה.',
+
+  const modeKeyMap = {
+    select: 'hintSelect',
+    addnode: 'hintAddNode',
+    removenode: 'hintRemoveNode',
+    redraw: 'hintRedraw'
   };
-  els.modeHint.innerHTML = hints[mode];
+  els.modeHint.innerHTML = getI18nStr(modeKeyMap[mode]);
   els.redrawControls.style.display = 'none';
   cancelRedrawMode(true);
 }
@@ -1498,7 +1949,7 @@ els.modeSelect.onclick = ()=> setMode('select');
 els.modeAddNode.onclick = ()=> setMode('addnode');
 els.modeRemoveNode.onclick = ()=> setMode('removenode');
 els.modeRedraw.onclick = ()=>{
-  if(!state.selectedEdge){ log('<span style="color:#ff6b6b">בחרו קודם דופן מהטבלה במצב בחירה, ואז עברו לציור מחדש</span>'); setMode('select'); return; }
+  if(!state.selectedEdge){ log(`<span style="color:#ff6b6b">${getI18nStr('errSelectEdgeFirst')}</span>`); setMode('select'); return; }
   setMode('redraw');
   state.redraw.active = true; state.redraw.points = [];
   els.redrawControls.style.display='flex';
@@ -1508,20 +1959,22 @@ function cancelRedrawMode(silent){
   state.redraw.active=false; state.redraw.points=[];
   if(!silent) drawOverlay();
 }
-els.cancelRedraw.onclick = ()=>{ cancelRedrawMode(); drawOverlay(); setMode('select'); log('ציור מחדש בוטל'); };
+els.cancelRedraw.onclick = ()=>{ cancelRedrawMode(); drawOverlay(); setMode('select'); log(getI18nStr('logManualRedrawCancel')); };
 els.finishRedraw.onclick = ()=>{
   const rec = activeImg(); if(!rec) return;
   const edge = rec.edges.find(e=>e.id===state.selectedEdge);
-  if(!edge || state.redraw.points.length<2){ log('<span style="color:#ff6b6b">יש לסמן לפחות 2 נקודות</span>'); return; }
+  if(!edge || state.redraw.points.length<2){ log(`<span style="color:#ff6b6b">${getI18nStr('errDrawMinPoints')}</span>`); return; }
   const n1 = rec.nodes.find(n=>n.id===edge.n1);
   const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
   const newPath = [[n1.x,n1.y], ...state.redraw.points, n2? [n2.x,n2.y] : state.redraw.points[state.redraw.points.length-1]];
   edge.path = newPath;
   edge.length = pathLength(newPath);
   edge.manual = true;
-  log(`דופן ${edge.id} צוירה מחדש ידנית — אורך חדש ${edge.length.toFixed(1)}px, יחס חדש ${(edge.ratio=edge.length/edge.straight).toFixed(3)}`);
+  edge.straight = n2 ? dist(n1.x,n1.y,n2.x,n2.y) : dist(n1.x,n1.y, newPath[newPath.length-1][0], newPath[newPath.length-1][1]);
+  edge.ratio = edge.straight > 0 ? edge.length / edge.straight : NaN;
+  log(getI18nStr('logManualRedrawSuccess', {id: edge.id, len: edge.length.toFixed(1), ratio: edge.ratio.toFixed(3)}));
   cancelRedrawMode(); setMode('select');
-  drawOverlay(); updateStatsPanel(); renderEdgeTable();
+  drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 };
 
 els.overlay.addEventListener('click', (e)=>{
@@ -1600,7 +2053,7 @@ function findNearestNode(rec, x, y, maxDist){
 
 function addNodeOnEdge(rec, x, y){
   const edge = findAbsoluteNearestEdge(rec, x, y);
-  if(!edge){ log('<span style="color:#ff6b6b">לא נמצאה דופן כלשהי ללחיצה</span>'); return; }
+  if(!edge){ log(`<span style="color:#ff6b6b">${getI18nStr('errAddNodeNoEdge')}</span>`); return; }
 
   // find nearest segment on the edge path
   let bestSegIdx = -1;
@@ -1620,7 +2073,7 @@ function addNodeOnEdge(rec, x, y){
   const distToStart = Math.hypot(edge.path[0][0] - projX, edge.path[0][1] - projY);
   const distToEnd = Math.hypot(edge.path[edge.path.length - 1][0] - projX, edge.path[edge.path.length - 1][1] - projY);
   if (distToStart < 5 || distToEnd < 5) {
-    log('<span style="color:#ff6b6b">נקודה קרובה מדי לצומת קיים</span>');
+    log(`<span style="color:#ff6b6b">${getI18nStr('errAddNodeTooClose')}</span>`);
     return;
   }
 
@@ -1643,7 +2096,7 @@ function addNodeOnEdge(rec, x, y){
   e2.ratio = e2.straight>0? e2.length/e2.straight : NaN;
   rec.edges = rec.edges.filter(e=>e.id!==edge.id);
   rec.edges.push(e1,e2);
-  log(`נוסף צומת ${newNode.id} ידנית — דופן ${edge.id} פוצלה ל-${e1.id} ו-${e2.id}`);
+  log(getI18nStr('logManualNodeAdd', {nodeId: newNode.id, edgeId: edge.id, e1: e1.id, e2: e2.id}));
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 }
 
@@ -1665,12 +2118,12 @@ function removeNode(rec, nodeId){
     rec.edges = rec.edges.filter(e=>!connected.includes(e));
     rec.edges.push(newEdge);
     rec.nodes = rec.nodes.filter(n=>n.id!==nodeId);
-    log(`צומת ${nodeId} הוסר — דפנות מוזגו לדופן חדשה ${newEdge.id}`);
+    log(getI18nStr('logManualNodeRemoveMerge', {nodeId, edgeId: newEdge.id}));
   } else {
-    if(!confirm(`הצומת מחובר ל-${connected.length} דפנות. הסרתו תמחק גם את הדפנות המחוברות. להמשיך?`)) return;
+    if(!confirm(getI18nStr('confirmRemoveNode', {count: connected.length}))) return;
     rec.edges = rec.edges.filter(e=> !connected.includes(e));
     rec.nodes = rec.nodes.filter(n=>n.id!==nodeId);
-    log(`צומת ${nodeId} הוסר ידנית יחד עם ${connected.length} דפנות מחוברות`);
+    log(getI18nStr('logManualNodeRemoveDelete', {nodeId, count: connected.length}));
   }
   state.selectedEdge=null;
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
@@ -1683,14 +2136,21 @@ function buildCSVRows(images){
   const rows = [['image','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete']];
   images.forEach(rec=>{
     rec.edges.forEach(e=>{
-      rows.push([rec.name, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.n2? e.straight.toFixed(2):'', 
-        (e.n2 && isFinite(e.ratio))? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no']);
+      rows.push([rec.name, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
+        isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no']);
     });
   });
   rows.push([]);
   rows.push(['image','n_edges','mean_ratio_single_measurement','std_ratio']);
   images.forEach(rec=>{
-    const valid = rec.edges.filter(e=>!e.incomplete && isFinite(e.ratio));
+    const valid = rec.edges.filter(e => {
+      if (els.includeIncomplete.checked) {
+        return isFinite(e.ratio);
+      } else {
+        return !e.incomplete && isFinite(e.ratio);
+      }
+    });
+
     if(valid.length){
       const avg = valid.reduce((s,e)=>s+e.ratio,0)/valid.length;
       const sd = Math.sqrt(valid.reduce((s,e)=>s+(e.ratio-avg)**2,0)/valid.length);
@@ -1712,19 +2172,43 @@ function downloadCSV(rows, filename){
 }
 
 els.exportCurrent.onclick = ()=>{
-  const rec = activeImg(); if(!rec){ log('אין תמונה פעילה'); return; }
+  const rec = activeImg(); if(!rec){ log(getI18nStr('logNoImage')); return; }
   downloadCSV(buildCSVRows([rec]), `tj_undulation_${rec.name.replace(/\.[^.]+$/,'')}.csv`);
-  log(`יוצא CSV עבור ${rec.name}`);
+  log(getI18nStr('logExportingCurrent', {name: rec.name}));
 };
 els.exportAll.onclick = ()=>{
-  if(!state.images.length){ log('אין תמונות טעונות'); return; }
+  if(!state.images.length){ log(getI18nStr('logNoImagesLoaded')); return; }
   downloadCSV(buildCSVRows(state.images), `tj_undulation_all_images.csv`);
-  log(`יוצא CSV מרוכז עבור ${state.images.length} תמונות`);
+  log(getI18nStr('logExportingAll', {count: state.images.length}));
 };
 
+/* ===================== Open edge auto-connect ===================== */
+els.openEdgeRadius.addEventListener('input', () => {
+  els.openEdgeRadiusVal.textContent = els.openEdgeRadius.value;
+});
+
+els.btnConnectOpen.addEventListener('click', () => {
+  const rec = activeImg(); if(!rec) return;
+  const maxD = parseInt(els.openEdgeRadius.value, 10);
+  const connectedCount = connectIncompleteEdges(rec, maxD);
+  log(getI18nStr('logAutoConnect', {count: connectedCount}));
+  if (connectedCount > 0) {
+    drawOverlay();
+    updateStatsPanel();
+    renderEdgeTable();
+    refreshImgList();
+  }
+});
+
+els.includeIncomplete.addEventListener('change', () => {
+  updateStatsPanel();
+  renderEdgeTable();
+  refreshImgList();
+});
+
 /* ===================== init ===================== */
-setMode('select');
-log('הכלי מוכן. טענו תמונה כדי להתחיל.');
+applyTranslations(currentLang);
+log(getI18nStr('logReady'));
 </script>
 </body>
 </html>

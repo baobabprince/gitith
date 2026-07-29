@@ -50,7 +50,7 @@
   .row.stack{flex-direction:column;align-items:stretch;}
   input[type=range]{width:100%;accent-color:var(--green);}
   input[type=file]{font-size:12px;color:var(--text-dim);width:100%;}
-  label.small{font-size:11px;color:var(--text-dim);display:block;margin-bottom:3px;}
+  label.small{font-size:11px;color:var(--text-dim);display:block;margin-bottom:3px;position:relative;}
   .imgItem{padding:8px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;
     cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
   .imgItem.active{border-color:var(--green);background:#0e1710;}
@@ -108,7 +108,6 @@
 
   /* Tooltip Container */
   .tooltip-container {
-    position: relative;
     display: inline-flex;
     align-items: center;
     margin-left: 6px;
@@ -136,14 +135,15 @@
   .tooltip-content {
     visibility: hidden;
     position: absolute;
-    bottom: 135%; /* Position above the icon */
+    bottom: 135%; /* Position above the label */
+    left: 0;
+    right: 0;
     background-color: #1a231e;
     color: #dfe8e2;
     text-align: start;
     padding: 8px 12px;
     border: 1px solid var(--green-dim);
     border-radius: 6px;
-    width: 240px;
     font-size: 11.5px;
     line-height: 1.45;
     z-index: 9999;
@@ -168,27 +168,21 @@
 
   /* RTL adjustments */
   html[dir="rtl"] .tooltip-content {
-    right: 0;
-    left: auto;
-    transform: none;
     direction: rtl;
   }
   html[dir="rtl"] .tooltip-content::after {
-    right: 10px;
-    left: auto;
+    left: 16px;
+    right: auto;
     border-color: #1a231e transparent transparent transparent;
   }
 
   /* LTR adjustments */
   html[dir="ltr"] .tooltip-content {
-    left: 0;
-    right: auto;
-    transform: none;
     direction: ltr;
   }
   html[dir="ltr"] .tooltip-content::after {
-    left: 10px;
-    right: auto;
+    right: 16px;
+    left: auto;
     border-color: #1a231e transparent transparent transparent;
   }
 </style>

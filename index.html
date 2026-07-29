@@ -105,6 +105,92 @@
     color: var(--green);
     font-weight: bold;
   }
+
+  /* Tooltip Container */
+  .tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    margin-right: 6px;
+    cursor: help;
+  }
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--line);
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .tooltip-container:hover .tooltip-icon {
+    background: var(--green);
+    color: var(--bg);
+  }
+  /* Tooltip Content */
+  .tooltip-content {
+    visibility: hidden;
+    position: absolute;
+    bottom: 135%; /* Position above the icon */
+    background-color: #1a231e;
+    color: #dfe8e2;
+    text-align: start;
+    padding: 8px 12px;
+    border: 1px solid var(--green-dim);
+    border-radius: 6px;
+    width: 240px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    white-space: normal;
+    opacity: 0;
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+  }
+  /* Arrow for Tooltip */
+  .tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    border-width: 5px;
+    border-style: solid;
+  }
+  .tooltip-container:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* RTL adjustments */
+  html[dir="rtl"] .tooltip-content {
+    right: 0;
+    left: auto;
+    transform: none;
+    direction: rtl;
+  }
+  html[dir="rtl"] .tooltip-content::after {
+    right: 10px;
+    left: auto;
+    border-color: #1a231e transparent transparent transparent;
+  }
+
+  /* LTR adjustments */
+  html[dir="ltr"] .tooltip-content {
+    left: 0;
+    right: auto;
+    transform: none;
+    direction: ltr;
+  }
+  html[dir="ltr"] .tooltip-content::after {
+    left: 10px;
+    right: auto;
+    border-color: #1a231e transparent transparent transparent;
+  }
 </style>
 </head>
 <body>
@@ -131,25 +217,59 @@
 
     <div class="block">
       <h2 data-i18n="lblBinarization">2. עיבוד מקדים ובינריזציה</h2>
-      <label class="small" data-i18n="lblBinMethod">שיטת בינריזציה:</label>
+      <label class="small">
+        <span data-i18n="lblBinMethod">שיטת בינריזציה:</span>
+        <span class="tooltip-container">
+          <span class="tooltip-icon">?</span>
+          <span class="tooltip-content" data-i18n="hintTooltipBinMethod"></span>
+        </span>
+      </label>
       <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled>
         <option value="adaptive" data-i18n="optAdaptive">אדפטיבית (מקומית)</option>
         <option value="global" data-i18n="optGlobal">גלובלית (Otsu)</option>
       </select>
 
       <div id="panelGlobal" style="display:none;">
-        <label class="small"><span data-i18n="lblThreshold">סף בהירות (ערוץ ירוק):</span> <span id="thVal">—</span></label>
+        <label class="small">
+          <span data-i18n="lblThreshold">סף בהירות (ערוץ ירוק):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipThreshold"></span>
+          </span>
+          <span id="thVal">—</span>
+        </label>
         <input type="range" id="threshold" min="0" max="255" value="40" disabled>
       </div>
 
       <div id="panelAdaptive">
-        <label class="small"><span data-i18n="lblLocalWindow">גודל חלון מקומי (px):</span> <span id="adaptSizeVal">41</span></label>
+        <label class="small">
+          <span data-i18n="lblLocalWindow">גודל חלון מקומי (px):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipLocalWindow"></span>
+          </span>
+          <span id="adaptSizeVal">41</span>
+        </label>
         <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled>
 
-        <label class="small" style="margin-top:6px;"><span data-i18n="lblSensitivity">רגישות / היסט (C):</span> <span id="adaptCVal">7</span></label>
+        <label class="small" style="margin-top:6px;">
+          <span data-i18n="lblSensitivity">רגישות / היסט (C):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipSensitivity"></span>
+          </span>
+          <span id="adaptCVal">7</span>
+        </label>
         <input type="range" id="adaptC" min="-30" max="30" step="1" value="7" disabled>
 
-        <label class="small" style="margin-top:6px;"><span data-i18n="lblMinThBg">סף בהירות מינימלי לרקע:</span> <span id="adaptMinThVal">15</span></label>
+        <label class="small" style="margin-top:6px;">
+          <span data-i18n="lblMinThBg">סף בהירות מינימלי לרקע:</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipMinThBg"></span>
+          </span>
+          <span id="adaptMinThVal">15</span>
+        </label>
         <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled>
       </div>
 
@@ -157,18 +277,40 @@
         <label class="small" style="display:flex; align-items:center; gap:6px;">
           <input type="checkbox" id="fillHoles" checked disabled>
           <span data-i18n="lblFillHoles">מילוי חורים קטנים בדפנות</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipFillHoles"></span>
+          </span>
         </label>
         <div id="panelHoleSize" style="margin-top:4px;">
-          <label class="small"><span data-i18n="lblMaxHole">גודל חור מקסימלי (px):</span> <span id="holeSizeVal">50</span></label>
+          <label class="small">
+            <span data-i18n="lblMaxHole">גודל חור מקסימלי (px):</span>
+            <span class="tooltip-container">
+              <span class="tooltip-icon">?</span>
+              <span class="tooltip-content" data-i18n="hintTooltipMaxHole"></span>
+            </span>
+            <span id="holeSizeVal">50</span>
+          </label>
           <input type="range" id="holeSize" min="5" max="500" value="50" disabled>
         </div>
 
         <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
           <input type="checkbox" id="removeIslands" checked disabled>
           <span data-i18n="lblRemoveIslands">הסרת איי רעש רקע</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipRemoveIslands"></span>
+          </span>
         </label>
         <div id="panelIslandSize" style="margin-top:4px;">
-          <label class="small"><span data-i18n="lblMaxIsland">גודל אי מקסימלי (px):</span> <span id="islandSizeVal">100</span></label>
+          <label class="small">
+            <span data-i18n="lblMaxIsland">גודל אי מקסימלי (px):</span>
+            <span class="tooltip-container">
+              <span class="tooltip-icon">?</span>
+              <span class="tooltip-content" data-i18n="hintTooltipMaxIsland"></span>
+            </span>
+            <span id="islandSizeVal">100</span>
+          </label>
           <input type="range" id="islandSize" min="10" max="1000" value="100" disabled>
         </div>
       </div>
@@ -186,7 +328,14 @@
       </div>
 
       <div id="panelClassical">
-        <label class="small"><span data-i18n="lblMergeDist">רגישות מיזוג צמתים סמוכים (px):</span> <span id="mergeVal">—</span></label>
+        <label class="small">
+          <span data-i18n="lblMergeDist">רגישות מיזוג צמתים סמוכים (px):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipMergeDist"></span>
+          </span>
+          <span id="mergeVal">—</span>
+        </label>
         <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
         <div class="row" style="margin-top:8px;">
           <button id="btnDetect" class="primary" style="width:100%;" disabled data-i18n="btnDetect">הרץ זיהוי מלא</button>
@@ -200,12 +349,24 @@
       </div>
 
       <div id="panelGemini" style="display:none;">
-        <label class="small" data-i18n="lblGeminiKey">מפתח Gemini API (Google AI Studio)</label>
+        <label class="small">
+          <span data-i18n="lblGeminiKey">מפתח Gemini API (Google AI Studio)</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipGeminiKey"></span>
+          </span>
+        </label>
         <input type="password" id="geminiKey" placeholder="AIza..." style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;">
         <div class="row" style="margin-top:8px;">
           <button id="btnLoadModels" data-i18n="btnLoadModels">טען רשימת מודלים</button>
         </div>
-        <label class="small" data-i18n="lblGeminiModel">מודל</label>
+        <label class="small">
+          <span data-i18n="lblGeminiModel">מודל</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipGeminiModel"></span>
+          </span>
+        </label>
         <select id="geminiModel" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;" disabled>
           <option data-i18n="optLoadModelsFirst">— טענו רשימת מודלים תחילה —</option>
         </select>
@@ -223,11 +384,14 @@
 
     <!-- 3.5. Open edges auto-connect controls -->
     <div class="block" style="border-top:1px solid var(--line); padding-top:12px;">
-      <label class="small" style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-        <input type="checkbox" id="includeIncomplete">
-        <span data-i18n="lblIncludeIncomplete">כלול דפנות לא שלמות בסטטיסטיקה</span>
+      <label class="small">
+        <span data-i18n="lblOpenEdgeRadius">רדיוס חיבור אוטומטי של קצוות (px):</span>
+        <span class="tooltip-container">
+          <span class="tooltip-icon">?</span>
+          <span class="tooltip-content" data-i18n="hintTooltipOpenEdgeRadius"></span>
+        </span>
+        <span id="openEdgeRadiusVal">25</span>
       </label>
-      <label class="small"><span data-i18n="lblOpenEdgeRadius">רדיוס חיבור אוטומטי של קצוות (px):</span> <span id="openEdgeRadiusVal">25</span></label>
       <input type="range" id="openEdgeRadius" min="5" max="150" value="25">
       <div class="row" style="margin-top:8px;">
         <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר קצוות פתוחים</button>
@@ -282,7 +446,7 @@
       <h2 data-i18n="lblEdgeTable">טבלת דפנות</h2>
       <div id="edgeTableWrap">
         <table id="edgeTable">
-          <thead><tr><th data-i18n="thNodes">#</th><th data-i18n="thActual">אורך בפועל</th><th data-i18n="thStraight">מרחק ישר</th><th data-i18n="thRatio">יחס</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="thNodes">#</th><th data-i18n="thActual">אורך בפועל</th><th data-i18n="thStraight">מרחק ישר</th><th data-i18n="thRatio">יחס</th><th data-i18n="thInclude" style="text-align:center;">כלול בסטט'</th><th></th></tr></thead>
           <tbody id="edgeTableBody"></tbody>
         </table>
       </div>
@@ -396,6 +560,20 @@ const translations = {
     logLoadingModels: "טוען רשימת מודלים מ-Google...",
     logPreviewBinOn: "תצוגת סף בינארי הופעלה",
     logPreviewBinOff: "תצוגת סף בינארי כובתה",
+    thInclude: "כלול בסטט'",
+    hintTooltipBinMethod: "בחירת שיטת ההפרדה בין הדפנות לרקע. השיטה האדפטיבית מחשבת סף מקומי ומצוינת לתמונות עם תאורה לא אחידה. השיטה הגלובלית (Otsu) קובעת סף אחיד לכל התמונה.",
+    hintTooltipThreshold: "קובע את סף הבהירות המינימלי לחלבון (בטווח 0-255). פיקסלים בהירים מסף זה יוגדרו כחלק מהדופן. ערך גבוה מדי יקטע את הדפנות, ערך נמוך מדי יכניס רעש.",
+    hintTooltipLocalWindow: "גודל האזור (בפיקסלים) שעל פיו מחושב סף הבהירות המקומי בשיטה האדפטיבית. צריך להיות גדול מעט מעובי הדופן המקסימלי כדי להבחין בין הדופן לרקע הסובב אותה.",
+    hintTooltipSensitivity: "קבוע הפחתה מהממוצע המקומי בשיטה האדפטיבית. ערך גבוה יותר (למשל 10+) יסנן יותר רעש אך עלול להצר או לקטוע דפנות. ערך נמוך (למשל 2) ישאיר דפנות עבות אך יכניס יותר רעש רקע.",
+    hintTooltipMinThBg: "סף חסימה גלובלי בשיטה האדפטיבית המונע זיהוי רעשי רקע באזורים חשוכים לחלוטין. כל פיקסל שרמתו נמוכה מסף זה יוגדר אוטומטית כרקע, גם אם הוא בהיר מסביבתו.",
+    hintTooltipFillHoles: "זיהוי וסגירה של חורים קטנים בתוך סיגנל הדופן (למשל עקב צביעה לא אחידה). מונע היווצרות לולאות קטנות וצמתים מדומים בשלב בניית השלד.",
+    hintTooltipMaxHole: "השטח המקסימלי (בפיקסלים) של חור שימולא אוטומטית. חורים גדולים משטח זה יישארו פתוחים (למשל, מרכז התא עצמו).",
+    hintTooltipRemoveIslands: "מחיקת רכיבים מנותקים וקטנים שאינם מחוברים לרשת הדפנות הראשית, ובכך מנקה נקודות רעש מבודדות מהתמונה הבינארית.",
+    hintTooltipMaxIsland: "הגודל המקסימלי (בפיקסלים) של אי מבודד שיוסר. רכיבים מנותקים הגדולים מגודל זה יישארו בתמונה.",
+    hintTooltipMergeDist: "מרחק המיזוג (בפיקסלים) עבור צמתים סמוכים. צמתים המרוחקים זה מזה פחות ממרחק זה ימוזגו לצומת יחיד כדי למנוע כפילויות של צמתים קרובים מאוד.",
+    hintTooltipOpenEdgeRadius: "הרדיוס המקסימלי (בפיקסלים) לחיפוש צמתים סמוכים לצורך חיבור קצוות פתוחים (דפנות לא שלמות). אם נמצא צומת בטווח זה, הקצה יחובר אליו והדופן תהפוך לשלמה.",
+    hintTooltipGeminiKey: "<b>כיצד לקבל מפתח Gemini API בחינם:</b><br>1. היכנסו לאתר Google AI Studio בכתובת:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. התחברו עם חשבון הגוגל שלכם.<br>3. לחצו על הכפתור \"Get API key\".<br>4. לחצו על \"Create API key\".<br>5. בחרו פרויקט או צרו חדש ולחצו על יצירת המפתח.<br>6. העתיקו את המפתח והדביקו כאן.<br><i>* המפתח נשמר מקומית בדפדפן בלבד.</i>",
+    hintTooltipGeminiModel: "בחירת מודל השפה הגדול שבו תרצו להשתמש לצורך זיהוי הצמתים התלת-תאיים. המודלים נטענים באופן דינמי ישירות משרתי גוגל.",
   },
   en: {
     title: "TJ Undulation <span>Analyzer</span>",
@@ -495,6 +673,20 @@ const translations = {
     logLoadingModels: "Loading model list from Google...",
     logPreviewBinOn: "Binary preview turned ON",
     logPreviewBinOff: "Binary preview turned OFF",
+    thInclude: "Include",
+    hintTooltipBinMethod: "Choose how to separate boundaries from the background. Adaptive thresholding computes a local threshold and is great for uneven lighting. Global (Otsu) sets a single uniform threshold.",
+    hintTooltipThreshold: "Sets the minimum brightness threshold for the green channel (0-255). Pixels brighter than this are marked as boundaries. Too high splits boundaries; too low includes noise.",
+    hintTooltipLocalWindow: "The size of the local area (pixels) used to compute the adaptive threshold. Should be slightly larger than the maximum boundary thickness to distinguish the wall from its background.",
+    hintTooltipSensitivity: "A constant subtracted from the local mean. Higher values (e.g. 10+) filter more noise but may thin or split boundaries. Lower values (e.g. 2) keep thick boundaries but include more background noise.",
+    hintTooltipMinThBg: "A global floor threshold in adaptive mode to prevent detecting background noise in completely dark areas. Any pixel below this brightness is automatically background.",
+    hintTooltipFillHoles: "Detect and fill small holes inside the boundary signal (often caused by uneven staining). Prevents tiny loops and fake junctions from forming in the skeleton.",
+    hintTooltipMaxHole: "The maximum area (in pixels) of a hole to be filled. Holes larger than this size will remain open (such as the cell interior itself).",
+    hintTooltipRemoveIslands: "Deletes small disconnected components that are not attached to the main boundary network, cleaning up isolated noise spots from the binary image.",
+    hintTooltipMaxIsland: "The maximum size (in pixels) of an isolated island to be removed. Disconnected components larger than this will be kept.",
+    hintTooltipMergeDist: "Merge distance (in pixels) for adjacent junctions. Junctions closer than this distance are merged into a single node to avoid duplicate close junctions.",
+    hintTooltipOpenEdgeRadius: "The maximum radius (pixels) to search for nearby junctions when connecting open ends (incomplete boundaries). If a node is found within this range, the end will connect to it.",
+    hintTooltipGeminiKey: "<b>How to get a free Gemini API Key:</b><br>1. Visit Google AI Studio at:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. Sign in with your Google account.<br>3. Click the prominent \"Get API key\" button.<br>4. Click \"Create API key\".<br>5. Choose an existing project or create a new one, then click create key.<br>6. Copy the generated key (starts with AIza) and paste it here.<br><i>* The key is saved locally in your browser.</i>",
+    hintTooltipGeminiModel: "Choose the large language model to use for visual junction detection. Models are dynamically fetched directly from Google's servers.",
   },
   ar: {
     title: "محلل <span>تموج الموصلات الخلوية</span>",
@@ -594,6 +786,20 @@ const translations = {
     logLoadingModels: "تحميل قائمة النماذج من Google...",
     logPreviewBinOn: "تم تشغيل معاينة العتبة الثنائية",
     logPreviewBinOff: "تم إيقاف معاينة العتبة الثنائية",
+    thInclude: "تضمين",
+    hintTooltipBinMethod: "اختر طريقة فصل الحدود عن الخلفية. تحسب العتبة التكيفية عتبة محلية وهي ممتازة للإضاءة غير المتساوية. تحدد العتبة العالمية (Otsu) عتبة موحدة للصورة بأكملها.",
+    hintTooltipThreshold: "يحدد الحد الأدنى لسطوع القناة الخضراء (0-255). يتم تمييز البكسلات الأكثر سطوعًا كحدود. القيمة العالية جدًا تؤدي لتجزئة الحدود؛ والمنخفضة جدًا تشمل الضوضاء.",
+    hintTooltipLocalWindow: "حجم المنطقة المحلية (بالبكسل) المستخدمة لحساب العتبة التكيفية. يجب أن يكون أكبر قليلاً من أقصى سمك للحدود لتمييز الجدار عن خلفيته.",
+    hintTooltipSensitivity: "ثابت يتم طرحه من المتوسط المحلي. القيم الأعلى (مثل 10+) تصفي المزيد من الضوضاء ولكن قد تجعل الحدود رقيقة أو مجزأة. القيم الأقل (مثل 2) تحافظ على حدود سميكة ولكن تشمل ضوضاء خلفية أكثر.",
+    hintTooltipMinThBg: "الحد الأدنى للسطوع العام في الوضع التكيفي لمنع اكتشاف ضوضاء الخلفية في المناطق المظلمة تمامًا. أي بكسل أقل من هذا السطوع يعتبر خلفية تلقائيًا.",
+    hintTooltipFillHoles: "كشف وملء الثقوب الصغيرة داخل إشارة الحدود (الناتجة غالبًا عن صبغ غير متساوٍ). يمنع تكون حلقات صغيرة وموصلات وهمية في الهيكل.",
+    hintTooltipMaxHole: "الحد الأقصى لمساحة الثقب (بالبكسل) ليتم ملؤه. الثقوب الأكبر من هذا الحجم ستبقى مفتوحة (مثل داخل الخلية نفسه).",
+    hintTooltipRemoveIslands: "يحذف المكونات الصغيرة المنفصلة غير المرتبطة بشبكة الحدود الرئيسية، مما ينظف نقاط الضوضاء المعزولة من الصورة الثنائية.",
+    hintTooltipMaxIsland: "الحد الأقصى لحجم الجزيرة المعزولة (بالبكسل) ليتم إزالتها. سيتم الاحتفاظ بالمكونات المنفصلة الأكبر من ذلك.",
+    hintTooltipMergeDist: "مسافة الدمج (بالبكسل) للموصلات المتجاورة. يتم دمج الموصلات الأقرب من هذه المسافة في عقدة واحدة لتجنب تكرار الموصلات القريبة جدًا.",
+    hintTooltipOpenEdgeRadius: "أقصى نصف قطر (بالبكسل) للبحث عن موصلات قريبة عند توصيل الأطراف المفتوحة (الحدود غير المكتملة). إذا تم العثور على عقدة ضمن هذا النطاق، فسيتم الاتصال بها.",
+    hintTooltipGeminiKey: "<b>كيفية الحصول على مفتاح واجهة Gemini مجاني:</b><br>1. تفضل بزيارة Google AI Studio على:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. تسجيل الدخول باستخدام حساب Google الخاص بك.<br>3. انقر فوق الزر \"Get API key\".<br>4. انقر فوق \"Create API key\".<br>5. اختر مشروعًا موجودًا أو أنشئ مشروعًا جديدًا، ثم انقر فوق إنشاء المفتاح.<br>6. انسخ المفتاح الناتج والصقه هنا.<br><i>* يتم حفظ المفتاح محليًا في متصفحك فقط.</i>",
+    hintTooltipGeminiModel: "اختر النموذج اللغوي الكبير الذي ترغب في استخدامه لتحديد الموصلات ثلاثية الخلايا. يتم تحميل النماذج ديناميكيًا مباشرة من خوادم Google.",
   }
 };
 
@@ -844,11 +1050,10 @@ function refreshImgList(){
 
     // Calculate based on toggle
     const validEdges = rec.edges.filter(e => {
-      if (els.includeIncomplete.checked) {
-        return isFinite(e.ratio);
-      } else {
-        return !e.incomplete && isFinite(e.ratio);
+      if (e.includeInStats === undefined) {
+        e.includeInStats = !e.incomplete;
       }
+      return e.includeInStats && isFinite(e.ratio);
     });
 
     const avg = validEdges.length ? (validEdges.reduce((s,e)=>s+e.ratio,0)/validEdges.length).toFixed(3) : '—';
@@ -1356,6 +1561,7 @@ function connectIncompleteEdges(rec, maxDist) {
       e.straight = Math.hypot(closestNode.x - rec.nodes.find(n=>n.id===e.n1).x, closestNode.y - rec.nodes.find(n=>n.id===e.n1).y);
       e.ratio = e.straight > 0 ? e.length / e.straight : NaN;
       e.incomplete = false;
+      e.includeInStats = true;
       connectedCount++;
     }
   });
@@ -1501,6 +1707,7 @@ function traceEdges(skel, w, h, deg, nodes, pixelClusterId){
       n1: n1.id, n2: n2? n2.id : null,
       path, length: actual, straight, ratio: straight>0? actual/straight : NaN,
       manual:false, incomplete: !!incomplete,
+      includeInStats: !incomplete,
     });
   }
 
@@ -1870,11 +2077,10 @@ function updateStatsPanel(){
     els.statAvg.textContent='—'; els.statStd.textContent='—'; return; }
 
   const valid = rec.edges.filter(e => {
-    if (els.includeIncomplete.checked) {
-      return isFinite(e.ratio);
-    } else {
-      return !e.incomplete && isFinite(e.ratio);
+    if (e.includeInStats === undefined) {
+      e.includeInStats = !e.incomplete;
     }
+    return e.includeInStats && isFinite(e.ratio);
   });
 
   els.statNodes.textContent = rec.nodes.length;
@@ -1894,22 +2100,35 @@ function renderEdgeTable(){
   els.edgeTableBody.innerHTML='';
   if(!rec) return;
   rec.edges.forEach((e,i)=>{
+    if (e.includeInStats === undefined) {
+      e.includeInStats = !e.incomplete;
+    }
     const tr = document.createElement('tr');
     if(e.id===state.selectedEdge) tr.className='sel';
 
     const displayStraight = e.n2 ? e.straight.toFixed(1) : e.straight.toFixed(1);
     const displayRatio = isFinite(e.ratio) ? e.ratio.toFixed(3) : '—';
     const deleteText = currentLang === 'en' ? 'Delete' : (currentLang === 'ar' ? 'حذف' : 'מחק');
+    const isChecked = e.includeInStats ? 'checked' : '';
 
     tr.innerHTML = `<td>${i+1}${e.incomplete?' ⚠':''}${e.manual?' ✎':''}</td>
       <td>${e.length.toFixed(1)}</td>
       <td>${displayStraight}</td>
       <td>${displayRatio}</td>
+      <td style="text-align:center;"><input type="checkbox" class="include-chk" ${isChecked}></td>
       <td><a class="linklike" data-del="${e.id}">${deleteText}</a></td>`;
     tr.querySelector('td').onclick = ()=> selectEdge(e.id);
     tr.querySelectorAll('td')[1].onclick = ()=> selectEdge(e.id);
     tr.querySelectorAll('td')[2].onclick = ()=> selectEdge(e.id);
     tr.querySelectorAll('td')[3].onclick = ()=> selectEdge(e.id);
+    const chk = tr.querySelector('.include-chk');
+    chk.onclick = (ev)=> ev.stopPropagation();
+    chk.onchange = ()=>{
+      e.includeInStats = chk.checked;
+      updateStatsPanel();
+      refreshImgList();
+      drawOverlay();
+    };
     tr.querySelector('[data-del]').onclick = (ev)=>{ ev.stopPropagation(); deleteEdge(e.id); };
     els.edgeTableBody.appendChild(tr);
   });
@@ -2088,11 +2307,11 @@ function addNodeOnEdge(rec, x, y){
   const n1 = rec.nodes.find(n=>n.id===edge.n1);
   const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
   const e1 = { id:'e'+(rec.nextEdgeId++), n1:edge.n1, n2:newNode.id, path:path1,
-    length:pathLength(path1), straight: n1? Math.hypot(n1.x-newNode.x,n1.y-newNode.y):0, manual:true, incomplete:false };
+    length:pathLength(path1), straight: n1? Math.hypot(n1.x-newNode.x,n1.y-newNode.y):0, manual:true, incomplete:false, includeInStats:true };
   e1.ratio = e1.straight>0? e1.length/e1.straight : NaN;
   const e2 = { id:'e'+(rec.nextEdgeId++), n1:newNode.id, n2:edge.n2, path:path2,
     length:pathLength(path2), straight: n2? Math.hypot(n2.x-newNode.x,n2.y-newNode.y): (edge.incomplete? edge.straight-e1.straight:0),
-    manual:true, incomplete: edge.incomplete };
+    manual:true, incomplete: edge.incomplete, includeInStats: edge.includeInStats !== undefined ? edge.includeInStats : !edge.incomplete };
   e2.ratio = e2.straight>0? e2.length/e2.straight : NaN;
   rec.edges = rec.edges.filter(e=>e.id!==edge.id);
   rec.edges.push(e1,e2);
@@ -2113,7 +2332,7 @@ function removeNode(rec, nodeId){
     const n1 = rec.nodes.find(n=>n.id===na), n2 = rec.nodes.find(n=>n.id===nb);
     const straight = (n1&&n2)? Math.hypot(n1.x-n2.x,n1.y-n2.y) : Math.max(e1.straight,e2.straight);
     const newEdge = { id:'e'+(rec.nextEdgeId++), n1:na, n2:nb, path:merged,
-      length:pathLength(merged), straight, manual:true, incomplete:false };
+      length:pathLength(merged), straight, manual:true, incomplete:false, includeInStats:true };
     newEdge.ratio = straight>0? newEdge.length/straight : NaN;
     rec.edges = rec.edges.filter(e=>!connected.includes(e));
     rec.edges.push(newEdge);
@@ -2133,22 +2352,24 @@ function removeNode(rec, nodeId){
 function csvEscape(v){ return `"${String(v).replace(/"/g,'""')}"`; }
 
 function buildCSVRows(images){
-  const rows = [['image','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete']];
+  const rows = [['image','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete','included_in_stats']];
   images.forEach(rec=>{
     rec.edges.forEach(e=>{
+      if (e.includeInStats === undefined) {
+        e.includeInStats = !e.incomplete;
+      }
       rows.push([rec.name, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
-        isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no']);
+        isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no', e.includeInStats?'yes':'no']);
     });
   });
   rows.push([]);
   rows.push(['image','n_edges','mean_ratio_single_measurement','std_ratio']);
   images.forEach(rec=>{
     const valid = rec.edges.filter(e => {
-      if (els.includeIncomplete.checked) {
-        return isFinite(e.ratio);
-      } else {
-        return !e.incomplete && isFinite(e.ratio);
+      if (e.includeInStats === undefined) {
+        e.includeInStats = !e.incomplete;
       }
+      return e.includeInStats && isFinite(e.ratio);
     });
 
     if(valid.length){
@@ -2198,12 +2419,6 @@ els.btnConnectOpen.addEventListener('click', () => {
     renderEdgeTable();
     refreshImgList();
   }
-});
-
-els.includeIncomplete.addEventListener('change', () => {
-  updateStatsPanel();
-  renderEdgeTable();
-  refreshImgList();
 });
 
 /* ===================== init ===================== */

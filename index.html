@@ -1512,6 +1512,43 @@ function degreeMap(skel, w, h){
   return deg;
 }
 
+function crossingNumberMap(skel, w, h){
+  const cn = new Uint8Array(w*h);
+  const offsets = [
+    [1, 0],   // P1
+    [1, -1],  // P2
+    [0, -1],  // P3
+    [-1, -1], // P4
+    [-1, 0],  // P5
+    [-1, 1],  // P6
+    [0, 1],   // P7
+    [1, 1]    // P8
+  ];
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      if(!skel[y*w+x]) continue;
+      let pValues = [];
+      for(let i=0; i<8; i++){
+        const nx = x + offsets[i][0];
+        const ny = y + offsets[i][1];
+        if(nx>=0 && nx<w && ny>=0 && ny<h){
+          pValues.push(skel[ny*w+nx] ? 1 : 0);
+        } else {
+          pValues.push(0);
+        }
+      }
+      let sum = 0;
+      for(let i=0; i<8; i++){
+        const val1 = pValues[i];
+        const val2 = pValues[(i+1)%8];
+        sum += Math.abs(val2 - val1);
+      }
+      cn[y*w+x] = sum / 2;
+    }
+  }
+  return cn;
+}
+
 /**
  * Collapse nearby branch-point blobs into single logical junctions, based
  * purely on physical (pixel) distance between blob centroids.
@@ -1588,10 +1625,11 @@ function detectGraph(rec){
   // remove isolated noise pixels (deg 0)
   for(let i=0;i<skel.length;i++) if(skel[i] && deg[i]===0) skel[i]=0;
 
-  // branch pixel clustering (deg>=3)
+  // branch pixel clustering (using Rutovitz Crossing Number >= 3 to avoid false junction spots in middle of smooth curves)
+  const cn = crossingNumberMap(skel, w, h);
   const branchPixels = [];
   for(let y=0;y<h;y++) for(let x=0;x<w;x++){
-    if(skel[y*w+x] && deg[y*w+x]>=3) branchPixels.push([x,y]);
+    if(skel[y*w+x] && cn[y*w+x]>=3) branchPixels.push([x,y]);
   }
   const clusterRadius = 3; // tight: only merge pixels of the same contiguous branch blob.
                             // Broader consolidation of nearby-but-separate blobs happens
@@ -1635,6 +1673,63 @@ function detectGraph(rec){
   // segment) are collapsed too, purely topologically. Edge paths/lengths of
   // OTHER edges are never rewritten here.
   const mergedCount = mergeCloseNodes(rec, rec.mergeDist);
+
+  // Post-detection/post-pruning cleanup: automatically merge nodes with exactly 2 connected edges.
+  // When a node is connected to exactly two edges (often because one of its branch arms got pruned),
+  // it is no longer a tri-cellular junction but a redundant point in the middle of a continuous line.
+  let autoMerged2EdgeNodesCount = 0;
+  let hasMerged2EdgeNodes = true;
+  let safetyLoop = 0;
+  while(hasMerged2EdgeNodes && safetyLoop++ < 1000) {
+    hasMerged2EdgeNodes = false;
+    for (const node of rec.nodes) {
+      const connected = rec.edges.filter(e => e.n1 === node.id || e.n2 === node.id);
+      if (connected.length === 2 && connected.every(e => e.n1 && e.n2)) {
+        const [e1, e2] = connected;
+        const otherOf = (e) => e.n1 === node.id ? e.n2 : e.n1;
+        const na = otherOf(e1), nb = otherOf(e2);
+
+        let p1 = e1.path.slice();
+        if (e1.n2 === node.id) {
+          // ends at node
+        } else {
+          p1 = p1.reverse();
+        }
+        let p2 = e2.path.slice();
+        if (e2.n1 === node.id) {
+          // starts at node
+        } else {
+          p2 = p2.reverse();
+        }
+        const mergedPath = p1.concat(p2.slice(1));
+        const n1 = rec.nodes.find(n => n.id === na);
+        const n2 = rec.nodes.find(n => n.id === nb);
+        const straight = (n1 && n2) ? Math.hypot(n1.x - n2.x, n1.y - n2.y) : Math.max(e1.straight, e2.straight);
+
+        const newEdge = {
+          id: 'e' + (rec.nextEdgeId++),
+          n1: na,
+          n2: nb,
+          path: mergedPath,
+          length: pathLength(mergedPath),
+          straight,
+          manual: false,
+          incomplete: false,
+          includeInStats: true
+        };
+        newEdge.ratio = straight > 0 ? newEdge.length / straight : NaN;
+
+        rec.edges = rec.edges.filter(e => !connected.includes(e));
+        rec.edges.push(newEdge);
+        rec.nodes = rec.nodes.filter(n => n.id !== node.id);
+
+        autoMerged2EdgeNodesCount++;
+        hasMerged2EdgeNodes = true;
+        break; // break the loop to re-evaluate with updated nodes/edges
+      }
+    }
+  }
+
   rec.detected = true;
   log(getI18nStr('logDetected', {raw: rawCount, merged: mergedCount, nodes: rec.nodes.length, edges: rec.edges.length, dist: rec.mergeDist}));
 }
@@ -2044,6 +2139,60 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   const connectedCount = connectIncompleteEdges(rec, rVal);
   if (connectedCount > 0) {
     log(getI18nStr('logAutoConnectGemini', {count: connectedCount}));
+  }
+
+  // Post-detection/post-pruning cleanup for Gemini pipeline as well: automatically merge nodes with exactly 2 connected edges
+  let autoMergedGemini2EdgeNodesCount = 0;
+  let hasMergedGemini2EdgeNodes = true;
+  let safetyLoopGemini = 0;
+  while(hasMergedGemini2EdgeNodes && safetyLoopGemini++ < 1000) {
+    hasMergedGemini2EdgeNodes = false;
+    for (const node of rec.nodes) {
+      const connected = rec.edges.filter(e => e.n1 === node.id || e.n2 === node.id);
+      if (connected.length === 2 && connected.every(e => e.n1 && e.n2)) {
+        const [e1, e2] = connected;
+        const otherOf = (e) => e.n1 === node.id ? e.n2 : e.n1;
+        const na = otherOf(e1), nb = otherOf(e2);
+
+        let p1 = e1.path.slice();
+        if (e1.n2 === node.id) {
+          // ends at node
+        } else {
+          p1 = p1.reverse();
+        }
+        let p2 = e2.path.slice();
+        if (e2.n1 === node.id) {
+          // starts at node
+        } else {
+          p2 = p2.reverse();
+        }
+        const mergedPath = p1.concat(p2.slice(1));
+        const n1 = rec.nodes.find(n => n.id === na);
+        const n2 = rec.nodes.find(n => n.id === nb);
+        const straight = (n1 && n2) ? Math.hypot(n1.x - n2.x, n1.y - n2.y) : Math.max(e1.straight, e2.straight);
+
+        const newEdge = {
+          id: 'e' + (rec.nextEdgeId++),
+          n1: na,
+          n2: nb,
+          path: mergedPath,
+          length: pathLength(mergedPath),
+          straight,
+          manual: false,
+          incomplete: false,
+          includeInStats: true
+        };
+        newEdge.ratio = straight > 0 ? newEdge.length / straight : NaN;
+
+        rec.edges = rec.edges.filter(e => !connected.includes(e));
+        rec.edges.push(newEdge);
+        rec.nodes = rec.nodes.filter(n => n.id !== node.id);
+
+        autoMergedGemini2EdgeNodesCount++;
+        hasMergedGemini2EdgeNodes = true;
+        break;
+      }
+    }
   }
 
   rec.detected = true;

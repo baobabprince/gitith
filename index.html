@@ -1210,24 +1210,24 @@ els.btnPreviewBin.addEventListener('click', ()=>{
   drawOverlay();
 });
 
+// בתוך smoothGreen - הריצו את הבלור פעמיים (בערך גאוסיאני 5x5):
 function smoothGreen(imgData){
-  // 3x3 box blur on the green channel to suppress jagged-edge / staircase noise
-  // that otherwise produces spurious skeleton branches after thinning.
   const w=imgData.width, h=imgData.height, d=imgData.data;
   const g = new Float32Array(w*h);
   for(let p=0,i=0;i<d.length;i+=4,p++) g[p]=d[i+1];
-  const out = new Float32Array(w*h);
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
+  function boxBlur(src){
+    const out = new Float32Array(w*h);
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
       let sum=0, cnt=0;
       for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
         const nx=x+dx, ny=y+dy;
-        if(nx>=0&&ny>=0&&nx<w&&ny<h){ sum+=g[ny*w+nx]; cnt++; }
+        if(nx>=0&&ny>=0&&nx<w&&ny<h){ sum+=src[ny*w+nx]; cnt++; }
       }
       out[y*w+x]=sum/cnt;
     }
+    return out;
   }
-  return out;
+  return boxBlur(boxBlur(g)); // שני מעברים = בערך גאוסיאני
 }
 
 function computeIntegralImage(data, w, h) {
@@ -1490,7 +1490,7 @@ function detectGraph(rec){
   for(let y=0;y<h;y++) for(let x=0;x<w;x++){
     if(skel[y*w+x] && deg[y*w+x]>=3) branchPixels.push([x,y]);
   }
-  const clusterRadius = 2; // tight: only merge pixels of the same physical junction blob.
+  const clusterRadius = 5; // tight: only merge pixels of the same physical junction blob.
                             // Broader consolidation of nearby-but-separate blobs happens
                             // later in mergeCloseNodes, which is aware of real traced
                             // path length and can't jump across empty space.
@@ -1879,7 +1879,7 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
   const bin = binarize(rec);
   const skel = thin(bin, rec.width, rec.height);
-  const spurLen = Math.max(6, Math.round(Math.min(rec.width,rec.height)/80));
+  const spurLen = Math.max(15, Math.round(Math.min(rec.width,rec.height)/50));
   pruneSpurs(skel, rec.width, rec.height, spurLen);
   rec.binary = bin; rec.skeleton = skel;
 

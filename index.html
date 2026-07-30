@@ -203,6 +203,99 @@
     left: auto;
     border-color: #1a231e transparent transparent transparent;
   }
+
+  /* Guided Tour Styles */
+  #tourHighlight {
+    position: absolute;
+    pointer-events: none;
+    border: 3px solid var(--green);
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);
+    z-index: 10000;
+    transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+    display: none;
+  }
+  #tourTooltip {
+    position: absolute;
+    background: #111713;
+    border: 2px solid var(--green);
+    border-radius: 8px;
+    padding: 16px;
+    width: 340px;
+    z-index: 10001;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.9);
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text);
+    transition: top 0.25s ease, left 0.25s ease;
+  }
+  #tourTooltip h3 {
+    margin: 0;
+    font-size: 15px;
+    color: var(--green);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #tourTooltip .step-num {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--line);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  #tourTooltip p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  #tourTooltip .tour-warn {
+    font-size: 11.5px;
+    color: var(--warn);
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.2);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 4px;
+  }
+  #tourTooltip .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+  #tourTooltip .btns {
+    display: flex;
+    gap: 6px;
+  }
+  #tourTooltip button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  #tourTooltip button.next-btn {
+    background: var(--green-dim);
+    border-color: var(--green-dim);
+    color: #04120a;
+    font-weight: 600;
+  }
+  #tourTooltip button.next-btn:hover {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  #tourTooltip .skip-btn {
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+  }
+  #tourTooltip .skip-btn:hover {
+    color: var(--text);
+  }
 </style>
 </head>
 <body>
@@ -213,6 +306,7 @@
       <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
     </div>
     <div style="display:flex; align-items:center; gap:12px;">
+      <button id="btnStartTour" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; border-color:var(--green-dim); color:var(--green);" data-i18n="tourBtn">מדריך סיור 🧭</button>
       <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" data-i18n="githubLink">GitHub</a>
       <div class="lang-switcher">
         <button id="langHe" onclick="changeLang('he')">עברית</button>
@@ -221,6 +315,23 @@
       </div>
     </div>
   </header>
+
+  <!-- Guided Tour Elements -->
+  <div id="tourHighlight"></div>
+  <div id="tourTooltip">
+    <h3>
+      <span id="tourTitle"></span>
+      <span id="tourStepNum" class="step-num"></span>
+    </h3>
+    <p id="tourDesc"></p>
+    <div class="footer">
+      <button id="tourSkipBtn" class="skip-btn" data-i18n="tourSkip">דלג על הסיור</button>
+      <div class="btns">
+        <button id="tourPrevBtn" data-i18n="tourPrev">הקודם</button>
+        <button id="tourNextBtn" class="next-btn" data-i18n="tourNext">הבא</button>
+      </div>
+    </div>
+  </div>
 
   <!-- LEFT: images + detection controls -->
   <div id="left">
@@ -513,6 +624,22 @@ const translations = {
     thActual: "אורך בפועל",
     thStraight: "מרחק ישר",
     thRatio: "יחס",
+    // Tour keys
+    tourBtn: "מדריך סיור 🧭",
+    tourPrev: "הקודם",
+    tourNext: "הבא",
+    tourDone: "סיום המדריך",
+    tourSkip: "דלג על הסיור",
+    tourTitle1: "שלב 1: טעינת תמונה",
+    tourDesc1: "כדי להתחיל, טענו תמונות מטאבלט/מחשב או פשוט לחצו על <b>'טען תמונת דוגמה'</b> כדי להתנסות מיידית.",
+    tourTitle2: "שלב 2: בינריזציה ועיבוד מקדים",
+    tourDesc2: "מקטע זה הופך את התמונה לשחור-לבן. <div class='tour-warn'><b>הערה חשובה:</b> בדרך כלל לא מומלץ לשנות הגדרות אלו, שכן ערכי ברירת המחדל עברו אופטימיזציה לסוגי צביעה מגוונים. שנו אותם רק אם הדפנות לא מזוהות כראוי.</div>",
+    tourTitle3: "שלב 3: זיהוי צמתים ובניית גרף",
+    tourDesc3: "הריצו <b>'זיהוי מלא'</b> כדי לגלות אוטומטית את הצמתים והדפנות שלכם, או השתמשו ב-Gemini API לזיהוי ויזואלי מתקדם.",
+    tourTitle4: "שלב 4: עריכה ידנית ותיקונים",
+    tourDesc4: "כאן תוכלו לתקן את הגרף בדיוק מושלם: בחרו דופן, סמנו נקודות לציור מחדש, פצלו דפנות ע\"י הוספת צמתים, או מחקו צמתי סרק.",
+    tourTitle5: "שלב 5: סטטיסטיקה וייצוא נתונים",
+    tourDesc5: "קבלו סיכום של פיתולי הדפנות בזמן אמת, והורידו דוחות CSV מפורטים לעבודה שלכם. תהנו!",
     // Labels
     lblImages: "1. תמונות",
     lblBinarization: "2. עיבוד מקדים ובינריזציה",
@@ -631,6 +758,22 @@ const translations = {
     thActual: "Actual Length",
     thStraight: "Straight Dist.",
     thRatio: "Ratio",
+    // Tour keys
+    tourBtn: "Guided Tour 🧭",
+    tourPrev: "Prev",
+    tourNext: "Next",
+    tourDone: "Finish Tour",
+    tourSkip: "Skip Tour",
+    tourTitle1: "Step 1: Load Image",
+    tourDesc1: "To begin, load microscopy images from your device or simply click <b>'Load Example Image'</b> to try it out immediately.",
+    tourTitle2: "Step 2: Preprocessing & Binarization",
+    tourDesc2: "This section converts the image into black & white. <div class='tour-warn'><b>Important Note:</b> We highly discourage changing these settings because default parameters are pre-optimized. Modify them only if cell borders are not resolved correctly.</div>",
+    tourTitle3: "Step 3: Junction Detection & Graph",
+    tourDesc3: "Click <b>'Run Full Detection'</b> to automatically trace junctions and edges, or use the Gemini API for advanced visual detection.",
+    tourTitle4: "Step 4: Manual Editing",
+    tourDesc4: "Correct the graph with pixel-perfect accuracy here: select an edge, click points to redraw, split boundaries by adding junctions, or delete spurious nodes.",
+    tourTitle5: "Step 5: Stats & Data Export",
+    tourDesc5: "View instant undulation metrics and download comprehensive CSV files for your analytical work. Enjoy!",
     // Labels
     lblImages: "1. Images",
     lblBinarization: "2. Preprocessing & Binarization",
@@ -749,6 +892,22 @@ const translations = {
     thActual: "الطول الفعلي",
     thStraight: "المسافة المستقيمة",
     thRatio: "النسبة",
+    // Tour keys
+    tourBtn: "جولة إرشادية 🧭",
+    tourPrev: "السابق",
+    tourNext: "التالي",
+    tourDone: "إنهاء الجولة",
+    tourSkip: "تخطي الجولة",
+    tourTitle1: "الخطوة ١: تحميل الصورة",
+    tourDesc1: "للبدء، قم بتحميل صور مجهرية من جهازك أو ببساطة انقر فوق <b>'تحميل صورة تجريبية'</b> لتجربتها على الفور.",
+    tourTitle2: "الخطوة ٢: المعالجة المسبقة والتقسيم الثنائي",
+    tourDesc2: "يقوم هذا القسم بتحويل الصورة إلى اللونين الأبيض والأسود. <div class='tour-warn'><b>ملاحظة هامة:</b> ننصح بعدم تغيير هذه الإعدادات لأن الإعدادات الافتراضية محسّنة مسبقًا. لا تقم بتعديلها إلا إذا كانت حدود الخلايا لا تظهر بشكل صحيح.</div>",
+    tourTitle3: "الخطوة ٣: كشف الموصلات والرسم البياني",
+    tourDesc3: "انقر على <b>'تشغيل الكشف الكامل'</b> لتتبع الموصلات والحدود تلقائيًا، أو استخدم واجهة Gemini الرائعة للكشف البصري المتقدم.",
+    tourTitle4: "الخطوة ٤: التحرير اليدوي",
+    tourDesc4: "قم بتصحيح الرسم البياني بدقة متناهية هنا: حدد الحد، وانقر على نقاط لإعادة الرسم، أو قم بتقسيم الحدود بإضافة موصلات، أو احذف العقد الزائفة.",
+    tourTitle5: "الخطوة ٥: الإحصائيات وتصدير البيانات",
+    tourDesc5: "اعرض مقاييس التموج الفورية وقم بتنزيل ملفات CSV الشاملة لعملك التحليلي. استمتع!",
     // Labels
     lblImages: "١. الصور",
     lblBinarization: "٢. المعالجة المسبقة والتقسيم الثنائي",
@@ -913,6 +1072,11 @@ function applyTranslations(lang) {
   // Refresh table and stats
   updateStatsPanel();
   renderEdgeTable();
+
+  // If tour is active, refresh the current tour step texts instantly on language change
+  if (tourState.active) {
+    showTourStep(tourState.currentStep);
+  }
 }
 
 function changeLang(lang) {
@@ -2769,9 +2933,184 @@ els.btnConnectOpen.addEventListener('click', () => {
   }
 });
 
+/* ===================== Guided Tour System ===================== */
+const tourState = {
+  active: false,
+  currentStep: 0,
+  steps: [
+    {
+      elementId: 'btnLoadExample',
+      titleKey: 'tourTitle1',
+      descKey: 'tourDesc1',
+      position: 'bottom-center' // Positions relative to the highlighted element
+    },
+    {
+      elementId: 'binMethod',
+      titleKey: 'tourTitle2',
+      descKey: 'tourDesc2',
+      position: 'bottom-center'
+    },
+    {
+      elementId: 'btnDetect',
+      titleKey: 'tourTitle3',
+      descKey: 'tourDesc3',
+      position: 'bottom-center'
+    },
+    {
+      elementId: 'modeSelect',
+      titleKey: 'tourTitle4',
+      descKey: 'tourDesc4',
+      position: 'bottom-center'
+    },
+    {
+      elementId: 'right',
+      titleKey: 'tourTitle5',
+      descKey: 'tourDesc5',
+      position: 'left-center'
+    }
+  ]
+};
+
+function startTour() {
+  tourState.active = true;
+  tourState.currentStep = 0;
+  document.getElementById('tourHighlight').style.display = 'block';
+  document.getElementById('tourTooltip').style.display = 'flex';
+
+  // Load example image on start of the tour if there's no active image
+  if (!activeImg()) {
+    loadImageFromUrl('example/ctl+213_green.png', 'ctl+213_green.png');
+  }
+
+  showTourStep(0);
+}
+
+function endTour() {
+  tourState.active = false;
+  document.getElementById('tourHighlight').style.display = 'none';
+  document.getElementById('tourTooltip').style.display = 'none';
+  localStorage.setItem('tjTourCompleted', 'true');
+}
+
+function showTourStep(index) {
+  if (index < 0 || index >= tourState.steps.length) {
+    endTour();
+    return;
+  }
+  tourState.currentStep = index;
+  const step = tourState.steps[index];
+  const target = document.getElementById(step.elementId);
+
+  // Update text content and translations
+  document.getElementById('tourTitle').innerHTML = getI18nStr(step.titleKey);
+  document.getElementById('tourStepNum').textContent = `${index + 1}/${tourState.steps.length}`;
+  document.getElementById('tourDesc').innerHTML = getI18nStr(step.descKey);
+
+  // Buttons text & visibility
+  const nextBtn = document.getElementById('tourNextBtn');
+  const prevBtn = document.getElementById('tourPrevBtn');
+
+  prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+  if (index === tourState.steps.length - 1) {
+    nextBtn.textContent = getI18nStr('tourDone');
+  } else {
+    nextBtn.textContent = getI18nStr('tourNext');
+  }
+
+  if (target) {
+    // Scroll element into view if needed
+    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    // Position highlight and tooltip
+    setTimeout(() => {
+      positionTourElements(target, step.position);
+    }, 150);
+  }
+}
+
+function positionTourElements(target, placement) {
+  const rect = target.getBoundingClientRect();
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+  const highlight = document.getElementById('tourHighlight');
+  const tooltip = document.getElementById('tourTooltip');
+
+  // Set highlight box coords with some padding
+  const padding = 6;
+  const top = rect.top + scrollY - padding;
+  const left = rect.left + scrollX - padding;
+  const width = rect.width + padding * 2;
+  const height = rect.height + padding * 2;
+
+  highlight.style.top = `${top}px`;
+  highlight.style.left = `${left}px`;
+  highlight.style.width = `${width}px`;
+  highlight.style.height = `${height}px`;
+
+  // Position tooltip relative to highlight
+  let tTop = 0;
+  let tLeft = 0;
+  const tRect = tooltip.getBoundingClientRect();
+  const tWidth = 340; // Defined in CSS
+
+  if (placement === 'bottom-center') {
+    tTop = top + height + 10;
+    tLeft = left + (width / 2) - (tWidth / 2);
+  } else if (placement === 'left-center') {
+    // Left of the element (for right sidebar)
+    tTop = top + (height / 2) - (tRect.height / 2 || 120);
+    // If layout is RTL, 'left' of target is actually towards the center. In LTR, left of target is outside.
+    // Let's position it to left with offset to avoid overlap
+    tLeft = left - tWidth - 15;
+  }
+
+  // Bound checks to ensure tooltip stays inside viewport
+  if (tLeft < 10) tLeft = 10;
+  if (tLeft + tWidth > window.innerWidth - 10) tLeft = window.innerWidth - tWidth - 10;
+  if (tTop < 10) tTop = 10;
+
+  tooltip.style.top = `${tTop}px`;
+  tooltip.style.left = `${tLeft}px`;
+}
+
+// Bind tour UI controls
+document.getElementById('btnStartTour').onclick = startTour;
+document.getElementById('tourSkipBtn').onclick = endTour;
+document.getElementById('tourPrevBtn').onclick = () => {
+  if (tourState.currentStep > 0) {
+    showTourStep(tourState.currentStep - 1);
+  }
+};
+document.getElementById('tourNextBtn').onclick = () => {
+  if (tourState.currentStep < tourState.steps.length - 1) {
+    showTourStep(tourState.currentStep + 1);
+  } else {
+    endTour();
+  }
+};
+
+// Handle window resizing
+window.addEventListener('resize', () => {
+  if (tourState.active) {
+    const step = tourState.steps[tourState.currentStep];
+    const target = document.getElementById(step.elementId);
+    if (target) {
+      positionTourElements(target, step.position);
+    }
+  }
+});
+
 /* ===================== init ===================== */
 applyTranslations(currentLang);
 log(getI18nStr('logReady'));
+
+// Auto launch on first visit
+if (!localStorage.getItem('tjTourCompleted')) {
+  setTimeout(() => {
+    startTour();
+  }, 600);
+}
 </script>
 </body>
 </html>

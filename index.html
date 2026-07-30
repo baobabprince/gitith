@@ -227,6 +227,7 @@
     <div class="block">
       <h2 data-i18n="lblImages">1. תמונות</h2>
       <input type="file" id="fileInput" accept="image/*" multiple>
+      <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
       <div id="imgList" style="margin-top:10px;"></div>
     </div>
 
@@ -503,6 +504,7 @@ const translations = {
     btnPreviewBin: "תצוגת סף (בינארי)",
     btnDetect: "הרץ זיהוי מלא",
     btnDetectGemini: "זהה צמתים עם Gemini",
+    btnLoadExample: "טען תמונת דוגמה",
     exportCurrent: "ייצוא CSV — תמונה זו",
     exportAll: "ייצוא CSV — כל התמונות",
     dropHint: "גררו תמונה או השתמשו בכפתור \"תמונות\" משמאל",
@@ -583,6 +585,7 @@ const translations = {
     errDrawMinPoints: "יש לסמן לפחות 2 נקודות",
     errAddNodeNoEdge: "לא נמצאה דופן כלשהי ללחיצה",
     errAddNodeTooClose: "נקודה קרובה מדי לצומת קיים",
+    errTaintedCanvas: "אבטחת הדפדפן חסמה גישה לתמונה (Tainted Canvas). בהרצה מקומית דרך קובץ (file://), יש להעלות את תמונת הדוגמה באמצעות כפתור 'תמונות' או להריץ שרת מקומי.",
     optLoadModelsFirst: "— טענו רשימת מודלים תחילה —",
     logModelsLoaded: "נטענו {count} מודלים זמינים",
     logLoadingModels: "טוען רשימת מודלים מ-Google...",
@@ -619,6 +622,7 @@ const translations = {
     btnPreviewBin: "Threshold Preview (Binary)",
     btnDetect: "Run Full Detection",
     btnDetectGemini: "Detect Junctions with Gemini",
+    btnLoadExample: "Load Example Image",
     exportCurrent: "Export CSV — This Image",
     exportAll: "Export CSV — All Images",
     dropHint: "Drag an image here or use the 'Images' button on the left",
@@ -699,6 +703,7 @@ const translations = {
     errDrawMinPoints: "Please plot at least 2 points",
     errAddNodeNoEdge: "Could not find any boundary near the click",
     errAddNodeTooClose: "Clicked point is too close to an existing junction",
+    errTaintedCanvas: "Browser security blocked canvas access (Tainted Canvas). When running locally via file://, please upload the example image using the 'Images' button, or run a local web server.",
     optLoadModelsFirst: "— Load model list first —",
     logModelsLoaded: "Loaded {count} available models",
     logLoadingModels: "Loading model list from Google...",
@@ -735,6 +740,7 @@ const translations = {
     btnPreviewBin: "معاينة العتبة (ثنائي)",
     btnDetect: "تشغيل الكشف الكامل",
     btnDetectGemini: "كشف الموصلات عبر Gemini",
+    btnLoadExample: "تحميل صورة تجريبية",
     exportCurrent: "تصدير CSV — هذه الصورة",
     exportAll: "تصدير CSV — جميع الصور",
     dropHint: "اسحب صورة هنا أو استخدم زر \"الصور\" على اليسار",
@@ -815,6 +821,7 @@ const translations = {
     errDrawMinPoints: "يرجى تحديد نقطتين على الأقل",
     errAddNodeNoEdge: "لم يتم العثور على أي حد بالقرب من النقرة",
     errAddNodeTooClose: "النقطة المحددة قريبة جدًا من موصل موجود",
+    errTaintedCanvas: "حظر أمان المتصفح الوصول إلى الكانفاس (Tainted Canvas). عند التشغيل محليًا عبر file://، يرجى تحميل الصورة التجريبية باستخدام زر 'الصور'، أو تشغيل خادم محلي.",
     optLoadModelsFirst: "— قم بتحميل قائمة النماذج أولاً —",
     logModelsLoaded: "تم تحميل {count} من النماذج المتاحة",
     logLoadingModels: "تحميل قائمة النماذج من Google...",
@@ -932,6 +939,7 @@ const state = {
 
 const els = {
   fileInput: document.getElementById('fileInput'),
+  btnLoadExample: document.getElementById('btnLoadExample'),
   imgList: document.getElementById('imgList'),
   binMethod: document.getElementById('binMethod'),
   panelGlobal: document.getElementById('panelGlobal'),
@@ -1034,7 +1042,14 @@ function loadFile(file){
     off.width=w; off.height=h;
     const octx = off.getContext('2d');
     octx.drawImage(img,0,0,w,h);
-    const imgData = octx.getImageData(0,0,w,h);
+    let imgData;
+    try {
+      imgData = octx.getImageData(0,0,w,h);
+    } catch(err) {
+      log(`<span style="color:#ff6b6b">${getI18nStr('errTaintedCanvas')}</span>`);
+      console.error(err);
+      return;
+    }
     const rec = {
       id: 'im'+Math.random().toString(36).slice(2,9),
       name: file.name, width:w, height:h, imgData,
@@ -1067,6 +1082,55 @@ function loadFile(file){
   };
   img.src = url;
 }
+
+function loadImageFromUrl(url, name){
+  const img = new Image();
+  img.onload = ()=>{
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIM/Math.max(w,h));
+    w = Math.round(w*scale); h = Math.round(h*scale);
+    const off = document.createElement('canvas');
+    off.width=w; off.height=h;
+    const octx = off.getContext('2d');
+    octx.drawImage(img,0,0,w,h);
+    let imgData;
+    try {
+      imgData = octx.getImageData(0,0,w,h);
+    } catch(err) {
+      log(`<span style="color:#ff6b6b">${getI18nStr('errTaintedCanvas')}</span>`);
+      console.error(err);
+      return;
+    }
+    const rec = {
+      id: 'im'+Math.random().toString(36).slice(2,9),
+      name: name, width:w, height:h, imgData,
+      binary:null, skeleton:null, nodes:[], edges:[],
+      threshold: autoThreshold(imgData),
+      mergeDist: Math.max(8, Math.min(20, Math.round(Math.min(w,h)/60))),
+      spurLen: Math.max(15, Math.round(Math.min(w,h)/50)),
+      nextNodeId:1, nextEdgeId:1,
+      detected:false,
+      binMethod: 'adaptive',
+      adaptSize: 41,
+      adaptC: 7,
+      adaptMinTh: 15,
+      fillHoles: true,
+      holeSize: 50,
+      removeIslands: true,
+      islandSize: 100,
+    };
+    state.images.push(rec);
+    state.activeId = rec.id;
+    log(getI18nStr('logLoaded', {name: name, w, h}));
+    refreshImgList();
+    setActiveImage(rec.id);
+  };
+  img.src = url;
+}
+
+els.btnLoadExample.addEventListener('click', ()=>{
+  loadImageFromUrl('example/ctl+213_green.png', 'ctl+213_green.png');
+});
 
 function autoThreshold(imgData){
   // simple Otsu on green channel

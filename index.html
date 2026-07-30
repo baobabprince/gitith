@@ -331,6 +331,17 @@
           <span id="mergeVal">—</span>
         </label>
         <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
+
+        <label class="small" style="margin-top:8px;">
+          <span data-i18n="lblSpurLen">אורך מינימלי לזיז אמיתי (px):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipSpurLen"></span>
+          </span>
+          <span id="spurLenVal">—</span>
+        </label>
+        <input type="range" id="spurLenSlider" min="5" max="100" value="20" disabled>
+
         <div class="row" style="margin-top:8px;">
           <button id="btnDetect" class="primary" style="width:100%;" disabled data-i18n="btnDetect">הרץ זיהוי מלא</button>
         </div>
@@ -494,6 +505,7 @@ const translations = {
     lblMaxIsland: "גודל אי מקסימלי (px):",
     lblJunctionGraph: "3. זיהוי צמתים וגרף",
     lblMergeDist: "רגישות מיזוג צמתים סמוכים (px):",
+    lblSpurLen: "אורך מינימלי לזיז אמיתי (px):",
     lblGeminiKey: "מפתח Gemini API (Google AI Studio)",
     lblGeminiModel: "מודל",
     lblManualEdit: "4. עריכה ידנית",
@@ -564,7 +576,8 @@ const translations = {
     hintTooltipMaxHole: "השטח המקסימלי (בפיקסלים) של חור שימולא אוטומטית. חורים גדולים משטח זה יישארו פתוחים (למשל, מרכז התא עצמו).",
     hintTooltipRemoveIslands: "מחיקת רכיבים מנותקים וקטנים שאינם מחוברים לרשת הדפנות הראשית, ובכך מנקה נקודות רעש מבודדות מהתמונה הבינארית.",
     hintTooltipMaxIsland: "הגודל המקסימלי (בפיקסלים) של אי מבודד שיוסר. רכיבים מנותקים הגדולים מגודל זה יישארו בתמונה.",
-    hintTooltipMergeDist: "מרחק המיזוג (בפיקסלים) עבור צמתים סמוכים. צמתים המרוחקים זה מזה פחות ממרחק זה ימוזגו לצומת יחיד כדי למנוע כפילויות של צמתים קרובים מאוד.",
+    hintTooltipMergeDist: "מרחק המיזוג (בפיקסלים) עבור צמתים סמוכים. הבדיקה כעת גיאומטרית וישירה (לפי מרחק פיזי בין מרכזי צמתים), ולא רק לפי קשתות קצרות שזוהו — כך שני צמתים קרובים ימוזגו גם אם המעקב הקלאסי לא תפס ביניהם קשת. המיזוג אינו טרנזיטיבי (לא ייצור שרשרת שמושכת צמתים רחוקים).",
+    hintTooltipSpurLen: "אורך מינימלי (בפיקסלים) שמתחתיו \"זיז\" קצר מהשלד (dead-end קצר) ייחשב רעש ויוסר. ערך נמוך מדי ישאיר המון צמתים מדומים בקצוות; ערך גבוה מדי עלול לקטוע קצוות אמיתיות של דפנות פתוחות.",
     hintTooltipOpenEdgeRadius: "הרדיוס המקסימלי (בפיקסלים) לחיפוש צמתים סמוכים לצורך חיבור קצוות פתוחים (דפנות לא שלמות). אם נמצא צומת בטווח זה, הקצה יחובר אליו והדופן תהפוך לשלמה.",
     hintTooltipGeminiKey: "<b>כיצד לקבל מפתח Gemini API בחינם:</b><br>1. היכנסו לאתר Google AI Studio בכתובת:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. התחברו עם חשבון הגוגל שלכם.<br>3. לחצו על הכפתור \"Get API key\".<br>4. לחצו על \"Create API key\".<br>5. בחרו פרויקט או צרו חדש ולחצו על יצירת המפתח.<br>6. העתיקו את המפתח והדביקו כאן.<br><i>* המפתח נשמר מקומית בדפדפן בלבד.</i>",
     hintTooltipGeminiModel: "בחירת מודל השפה הגדול שבו תרצו להשתמש לצורך זיהוי הצמתים התלת-תאיים. המודלים נטענים באופן דינמי ישירות משרתי גוגל.",
@@ -607,6 +620,7 @@ const translations = {
     lblMaxIsland: "Max Island Size (px):",
     lblJunctionGraph: "3. Junction Detection & Graph",
     lblMergeDist: "Merge Distance Threshold (px):",
+    lblSpurLen: "Min Real Spur Length (px):",
     lblGeminiKey: "Gemini API Key (Google AI Studio)",
     lblGeminiModel: "Model",
     lblManualEdit: "4. Manual Editing",
@@ -677,7 +691,8 @@ const translations = {
     hintTooltipMaxHole: "The maximum area (in pixels) of a hole to be filled. Holes larger than this size will remain open (such as the cell interior itself).",
     hintTooltipRemoveIslands: "Deletes small disconnected components that are not attached to the main boundary network, cleaning up isolated noise spots from the binary image.",
     hintTooltipMaxIsland: "The maximum size (in pixels) of an isolated island to be removed. Disconnected components larger than this will be kept.",
-    hintTooltipMergeDist: "Merge distance (in pixels) for adjacent junctions. Junctions closer than this distance are merged into a single node to avoid duplicate close junctions.",
+    hintTooltipMergeDist: "Merge distance (in pixels) for adjacent junctions. Merging is now purely geometric (based on physical distance between junction centers), not only on short traced edges — so two close junctions merge even if the classical tracer failed to find an edge between them. The merge is non-transitive (it will not chain-merge distant junctions together).",
+    hintTooltipSpurLen: "The minimum length (in pixels) below which a short skeleton dead-end spur is considered noise and removed. Too low leaves many spurious junctions at edges; too high may cut off genuine open-boundary endpoints.",
     hintTooltipOpenEdgeRadius: "The maximum radius (pixels) to search for nearby junctions when connecting open ends (incomplete boundaries). If a node is found within this range, the end will connect to it.",
     hintTooltipGeminiKey: "<b>How to get a free Gemini API Key:</b><br>1. Visit Google AI Studio at:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. Sign in with your Google account.<br>3. Click the prominent \"Get API key\" button.<br>4. Click \"Create API key\".<br>5. Choose an existing project or create a new one, then click create key.<br>6. Copy the generated key (starts with AIza) and paste it here.<br><i>* The key is saved locally in your browser.</i>",
     hintTooltipGeminiModel: "Choose the large language model to use for visual junction detection. Models are dynamically fetched directly from Google's servers.",
@@ -720,6 +735,7 @@ const translations = {
     lblMaxIsland: "الحد الأقصى لحجم الجزيرة (بكسل):",
     lblJunctionGraph: "٣. كشف الموصلات والرسم البياني",
     lblMergeDist: "عتبة دمج الموصلات المتجاورة (بكسل):",
+    lblSpurLen: "الحد الأدنى لطول الزائدة الحقيقية (بكسل):",
     lblGeminiKey: "مفتاح واجهة Gemini (Google AI Studio)",
     lblGeminiModel: "النموذج",
     lblManualEdit: "٤. التحرير اليدوي",
@@ -790,7 +806,8 @@ const translations = {
     hintTooltipMaxHole: "الحد الأقصى لمساحة الثقب (بالبكسل) ليتم ملؤه. الثقوب الأكبر من هذا الحجم ستبقى مفتوحة (مثل داخل الخلية نفسه).",
     hintTooltipRemoveIslands: "يحذف المكونات الصغيرة المنفصلة غير المرتبطة بشبكة الحدود الرئيسية، مما ينظف نقاط الضوضاء المعزولة من الصورة الثنائية.",
     hintTooltipMaxIsland: "الحد الأقصى لحجم الجزيرة المعزولة (بالبكسل) ليتم إزالتها. سيتم الاحتفاظ بالمكونات المنفصلة الأكبر من ذلك.",
-    hintTooltipMergeDist: "مسافة الدمج (بالبكسل) للموصلات المتجاورة. يتم دمج الموصلات الأقرب من هذه المسافة في عقدة واحدة لتجنب تكرار الموصلات القريبة جدًا.",
+    hintTooltipMergeDist: "مسافة الدمج (بالبكسل) للموصلات المتجاورة. أصبح الدمج الآن هندسيًا بحتًا (استنادًا إلى المسافة الفعلية بين مراكز الموصلات)، وليس فقط بناءً على الحدود القصيرة التي تم تتبعها — بحيث يتم دمج موصلين قريبين حتى لو فشل التتبع الكلاسيكي في العثور على حد بينهما. الدمج غير عابر (لن يدمج سلسلة من الموصلات البعيدة معًا).",
+    hintTooltipSpurLen: "الحد الأدنى للطول (بالبكسل) الذي تعتبر تحته الزائدة القصيرة (نهاية ميتة قصيرة) في الهيكل ضوضاء ويتم إزالتها. القيمة المنخفضة جدًا تترك الكثير من الموصلات الوهمية عند الحواف؛ والمرتفعة جدًا قد تقطع نهايات حدود مفتوحة حقيقية.",
     hintTooltipOpenEdgeRadius: "أقصى نصف قطر (بالبكسل) للبحث عن موصلات قريبة عند توصيل الأطراف المفتوحة (الحدود غير المكتملة). إذا تم العثور على عقدة ضمن هذا النطاق، فسيتم الاتصال بها.",
     hintTooltipGeminiKey: "<b>كيفية الحصول على مفتاح واجهة Gemini مجاني:</b><br>1. تفضل بزيارة Google AI Studio على:<br><a href='https://aistudio.google.com' target='_blank' style='color:var(--green); text-decoration:underline;'>https://aistudio.google.com</a><br>2. تسجيل الدخول باستخدام حساب Google الخاص بك.<br>3. انقر فوق الزر \"Get API key\".<br>4. انقر فوق \"Create API key\".<br>5. اختر مشروعًا موجودًا أو أنشئ مشروعًا جديدًا، ثم انقر فوق إنشاء المفتاح.<br>6. انسخ المفتاح الناتج والصقه هنا.<br><i>* يتم حفظ المفتاح محليًا في متصفحك فقط.</i>",
     hintTooltipGeminiModel: "اختر النموذج اللغوي الكبير الذي ترغب في استخدامه لتحديد الموصلات ثلاثية الخلايا. يتم تحميل النماذج ديناميكيًا مباشرة من خوادم Google.",
@@ -851,6 +868,7 @@ function applyTranslations(lang) {
     els.holeSizeVal.textContent = rec.holeSize;
     els.islandSizeVal.textContent = rec.islandSize;
     els.mergeVal.textContent = rec.mergeDist;
+    els.spurLenVal.textContent = rec.spurLen;
   } else {
     // Refresh Gemini select placeholder when no models loaded
     if (els.geminiModel.disabled) {
@@ -912,6 +930,8 @@ const els = {
   islandSizeVal: document.getElementById('islandSizeVal'),
   mergeDist: document.getElementById('mergeDist'),
   mergeVal: document.getElementById('mergeVal'),
+  spurLenSlider: document.getElementById('spurLenSlider'),
+  spurLenVal: document.getElementById('spurLenVal'),
   tabClassical: document.getElementById('tabClassical'),
   tabGemini: document.getElementById('tabGemini'),
   panelClassical: document.getElementById('panelClassical'),
@@ -995,7 +1015,14 @@ function loadFile(file){
       id: 'im'+Math.random().toString(36).slice(2,9),
       name: file.name, width:w, height:h, imgData,
       binary:null, skeleton:null, nodes:[], edges:[],
-      threshold: autoThreshold(imgData), mergeDist: Math.max(10, Math.round(Math.min(w,h)/40)),
+      threshold: autoThreshold(imgData),
+      // Geometric merge distance for collapsing nearby branch-point blobs into
+      // one logical junction. Kept fairly tight by default (dense networks
+      // often have real, distinct junctions closer together than you'd think).
+      mergeDist: Math.max(8, Math.min(20, Math.round(Math.min(w,h)/60))),
+      // Minimum length (px) for a skeleton dead-end spur to be considered real
+      // rather than noise from fibrous/uneven staining.
+      spurLen: Math.max(15, Math.round(Math.min(w,h)/50)),
       nextNodeId:1, nextEdgeId:1,
       detected:false,
       binMethod: 'adaptive',
@@ -1082,6 +1109,7 @@ function setActiveImage(id){
   els.btnPreviewBin.disabled = false;
   els.btnDetect.disabled = false;
   els.mergeDist.disabled = false;
+  els.spurLenSlider.disabled = false;
 
   // Sync state values to UI controls
   els.binMethod.value = rec.binMethod;
@@ -1101,6 +1129,8 @@ function setActiveImage(id){
   els.islandSizeVal.textContent = rec.islandSize;
   els.mergeDist.value = rec.mergeDist;
   els.mergeVal.textContent = rec.mergeDist;
+  els.spurLenSlider.value = rec.spurLen;
+  els.spurLenVal.textContent = rec.spurLen;
 
   // Show/hide appropriate panels based on selected binarization method
   if (rec.binMethod === 'adaptive') {
@@ -1197,6 +1227,11 @@ els.mergeDist.addEventListener('input', ()=>{
   rec.mergeDist = parseInt(els.mergeDist.value,10);
   els.mergeVal.textContent = rec.mergeDist;
 });
+els.spurLenSlider.addEventListener('input', ()=>{
+  const rec = activeImg(); if(!rec) return;
+  rec.spurLen = parseInt(els.spurLenSlider.value,10);
+  els.spurLenVal.textContent = rec.spurLen;
+});
 els.btnPreviewBin.addEventListener('click', ()=>{
   const rec = activeImg(); if(!rec) return;
   state.showBinary = !state.showBinary;
@@ -1210,24 +1245,31 @@ els.btnPreviewBin.addEventListener('click', ()=>{
   drawOverlay();
 });
 
-// בתוך smoothGreen - הריצו את הבלור פעמיים (בערך גאוסיאני 5x5):
 function smoothGreen(imgData){
+  // Two-pass 3x3 box blur on the green channel (approximates a wider
+  // Gaussian) to suppress jagged-edge / fibrous staining noise that
+  // otherwise produces spurious skeleton branches after thinning. A single
+  // 3x3 pass is too weak for noisy, fibrous ZO-1-style staining.
   const w=imgData.width, h=imgData.height, d=imgData.data;
   const g = new Float32Array(w*h);
   for(let p=0,i=0;i<d.length;i+=4,p++) g[p]=d[i+1];
-  function boxBlur(src){
+
+  function boxBlurPass(src){
     const out = new Float32Array(w*h);
-    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
-      let sum=0, cnt=0;
-      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
-        const nx=x+dx, ny=y+dy;
-        if(nx>=0&&ny>=0&&nx<w&&ny<h){ sum+=src[ny*w+nx]; cnt++; }
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        let sum=0, cnt=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx, ny=y+dy;
+          if(nx>=0&&ny>=0&&nx<w&&ny<h){ sum+=src[ny*w+nx]; cnt++; }
+        }
+        out[y*w+x]=sum/cnt;
       }
-      out[y*w+x]=sum/cnt;
     }
     return out;
   }
-  return boxBlur(boxBlur(g)); // שני מעברים = בערך גאוסיאני
+
+  return boxBlurPass(boxBlurPass(g));
 }
 
 function computeIntegralImage(data, w, h) {
@@ -1470,6 +1512,67 @@ function degreeMap(skel, w, h){
   return deg;
 }
 
+/**
+ * Collapse nearby branch-point blobs into single logical junctions, based
+ * purely on physical (pixel) distance between blob centroids.
+ *
+ * This deliberately does NOT use a naive transitive union-find (merge A-B,
+ * merge B-C => A,B,C become one group even if A and C are far apart). In a
+ * dense cell network that chains together dozens of unrelated junctions into
+ * one giant blob, whose average position lands nowhere real and whose edges
+ * get redrawn as long straight spokes into empty space.
+ *
+ * Instead we repeatedly merge only the single closest pair of remaining
+ * groups, and only if the resulting merged group's own pixels all still fit
+ * within `radius` of its new centroid (i.e. the merge doesn't blow up into a
+ * spread-out non-junction). This keeps merges local and non-transitive.
+ */
+function geometricMergeNodes(nodes, radius){
+  let groups = nodes.map(n => ({ pixels: n.pixels.slice() }));
+
+  function centroidOf(pixels){
+    const cx = pixels.reduce((s,p)=>s+p[0],0)/pixels.length;
+    const cy = pixels.reduce((s,p)=>s+p[1],0)/pixels.length;
+    return [cx,cy];
+  }
+  function maxSpread(pixels, cx, cy){
+    let m = 0;
+    for(const [x,y] of pixels) m = Math.max(m, Math.hypot(x-cx,y-cy));
+    return m;
+  }
+
+  let changed = true;
+  let safety = 0;
+  while(changed && safety++ < 20000){
+    changed = false;
+    const centroids = groups.map(g=>centroidOf(g.pixels));
+    let bestI=-1, bestJ=-1, bestD=Infinity;
+    for(let i=0;i<groups.length;i++){
+      for(let j=i+1;j<groups.length;j++){
+        const d = Math.hypot(centroids[i][0]-centroids[j][0], centroids[i][1]-centroids[j][1]);
+        if(d < radius && d < bestD){ bestD=d; bestI=i; bestJ=j; }
+      }
+    }
+    if(bestI===-1) break;
+    const combinedPixels = groups[bestI].pixels.concat(groups[bestJ].pixels);
+    const [ccx,ccy] = centroidOf(combinedPixels);
+    if(maxSpread(combinedPixels, ccx, ccy) <= radius){
+      groups[bestI] = { pixels: combinedPixels };
+      groups.splice(bestJ, 1);
+      changed = true;
+    } else {
+      // This closest pair can't be merged safely; since all other pairs are
+      // farther apart, no further merges are possible this round.
+      break;
+    }
+  }
+
+  return groups.map((g,i)=>{
+    const [cx,cy] = centroidOf(g.pixels);
+    return { id:'n'+(i+1), x:cx, y:cy, pixels:g.pixels };
+  });
+}
+
 function detectGraph(rec){
   const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : `${getI18nStr('optGlobal')} (th=${rec.threshold})`;
   log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
@@ -1477,7 +1580,7 @@ function detectGraph(rec){
   log(getI18nStr('logSkel'));
   const skel = thin(bin, rec.width, rec.height);
   const w=rec.width, h=rec.height;
-  const spurLen = Math.max(6, Math.round(Math.min(w,h)/80));
+  const spurLen = rec.spurLen;
   pruneSpurs(skel, w, h, spurLen);
   rec.binary = bin; rec.skeleton = skel;
   const deg = degreeMap(skel, w, h);
@@ -1490,42 +1593,24 @@ function detectGraph(rec){
   for(let y=0;y<h;y++) for(let x=0;x<w;x++){
     if(skel[y*w+x] && deg[y*w+x]>=3) branchPixels.push([x,y]);
   }
-  const clusterRadius = 5; // tight: only merge pixels of the same physical junction blob.
+  const clusterRadius = 3; // tight: only merge pixels of the same contiguous branch blob.
                             // Broader consolidation of nearby-but-separate blobs happens
-                            // later in mergeCloseNodes, which is aware of real traced
-                            // path length and can't jump across empty space.
+                            // next via geometricMergeNodes(), which works on physical
+                            // distance and is safe against chain-merging across the image.
   const clusters = clusterPoints(branchPixels, clusterRadius);
-let nodes = clusters.map((pts,i)=>{
-  const cx = pts.reduce((s,p)=>s+p[0],0)/pts.length;
-  const cy = pts.reduce((s,p)=>s+p[1],0)/pts.length;
-  return { id:'tmp'+i, x:cx, y:cy, pixels:pts };
-});
 
-  // מיזוג גיאומטרי נוסף: כל שני צמתים קרובים מרחק ישר < geomMergeDist מתמזגים,
-// גם אם אין ביניהם קשת שזוהתה בשלב ה-trace
-function geometricMergeNodes(nodes, radius){
-  const parent = nodes.map((_,i)=>i);
-  function find(a){ while(parent[a]!==a){parent[a]=parent[parent[a]];a=parent[a];} return a; }
-  function union(a,b){ const ra=find(a),rb=find(b); if(ra!==rb) parent[ra]=rb; }
-  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
-    if(Math.hypot(nodes[i].x-nodes[j].x, nodes[i].y-nodes[j].y) < radius) union(i,j);
-  }
-  const groups = new Map();
-  nodes.forEach((n,i)=>{
-    const r = find(i);
-    if(!groups.has(r)) groups.set(r, []);
-    groups.get(r).push(n);
+  let nodes = clusters.map((pts,i)=>{
+    const cx = pts.reduce((s,p)=>s+p[0],0)/pts.length;
+    const cy = pts.reduce((s,p)=>s+p[1],0)/pts.length;
+    return { id:'tmp'+i, x:cx, y:cy, pixels:pts };
   });
-  return Array.from(groups.values()).map((grp,i)=>{
-    const allPixels = grp.flatMap(n=>n.pixels);
-    const cx = allPixels.reduce((s,p)=>s+p[0],0)/allPixels.length;
-    const cy = allPixels.reduce((s,p)=>s+p[1],0)/allPixels.length;
-    return { id:'n'+(i+1), x:cx, y:cy, pixels:allPixels };
-  });
-}
+  const rawCount = nodes.length;
 
-nodes = geometricMergeNodes(nodes, rec.mergeDist); // עכשיו mergeDist עובד גם גיאומטרית
-rec.nextNodeId = nodes.length+1;
+  // Geometric merge: collapse nearby branch-point blobs into single logical
+  // junctions purely by physical distance, BEFORE tracing edges. Non-
+  // transitive by construction (see geometricMergeNodes docstring above).
+  nodes = geometricMergeNodes(nodes, rec.mergeDist);
+  nodes.forEach((n,i)=> n.id = 'n'+(i+1));
   rec.nextNodeId = nodes.length+1;
 
   // map pixel -> clusterId (by nearest cluster among its own contributing pixels)
@@ -1545,12 +1630,13 @@ rec.nextNodeId = nodes.length+1;
     log(getI18nStr('logAutoConnect', {count: connectedCount}));
   }
 
-  // fine skeleton texture / staining ruffles create clusters of nearby branch
-  // points that are really the same biological junction; collapse any two
-  // nodes connected by a very short traced edge into one.
+  // Any remaining pairs of nodes still connected by a very short traced edge
+  // (rare after the geometric pre-merge, but possible for a real short
+  // segment) are collapsed too, purely topologically. Edge paths/lengths of
+  // OTHER edges are never rewritten here.
   const mergedCount = mergeCloseNodes(rec, rec.mergeDist);
   rec.detected = true;
-  log(getI18nStr('logDetected', {raw: nodes.length, merged: mergedCount, nodes: rec.nodes.length, edges: rec.edges.length, dist: rec.mergeDist}));
+  log(getI18nStr('logDetected', {raw: rawCount, merged: mergedCount, nodes: rec.nodes.length, edges: rec.edges.length, dist: rec.mergeDist}));
 }
 
 function connectIncompleteEdges(rec, maxDist) {
@@ -1904,7 +1990,7 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
   log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
   const bin = binarize(rec);
   const skel = thin(bin, rec.width, rec.height);
-  const spurLen = Math.max(15, Math.round(Math.min(rec.width,rec.height)/50));
+  const spurLen = rec.spurLen;
   pruneSpurs(skel, rec.width, rec.height, spurLen);
   rec.binary = bin; rec.skeleton = skel;
 
@@ -1925,8 +2011,7 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
 
   const w=rec.width, h=rec.height;
   const deg = degreeMap(skel, w, h);
-  const nodes = [];
-  const pixelClusterId = new Map();
+  let nodes = [];
   let skipped = 0;
 
   points.forEach((p,i)=>{
@@ -1935,12 +2020,19 @@ async function detectGraphWithGemini(rec, apiKey, modelName){
     const blob = localBlobAround(skel, w, h, snapped[0], snapped[1], 10);
     const cx = blob.reduce((s,q)=>s+q[0],0)/blob.length;
     const cy = blob.reduce((s,q)=>s+q[1],0)/blob.length;
-    const node = { id:'n'+(i+1), x:cx, y:cy, pixels:blob };
-    nodes.push(node);
-    blob.forEach(([x,y])=> pixelClusterId.set(y*w+x, node.id));
+    nodes.push({ id:'tmp'+i, x:cx, y:cy, pixels:blob });
   });
   if(skipped) log(`<span style="color:#ff6b6b">${getI18nStr('logGeminiSkipped', {count: skipped})}</span>`);
+
+  // Same non-transitive geometric merge used in the classical path, in case
+  // Gemini (or the dedup step above) still left two candidate points close
+  // enough to be the same physical junction.
+  nodes = geometricMergeNodes(nodes, rec.mergeDist);
+  nodes.forEach((n,i)=> n.id = 'n'+(i+1));
   rec.nextNodeId = nodes.length+1;
+
+  const pixelClusterId = new Map();
+  nodes.forEach(n=> n.pixels.forEach(([x,y])=> pixelClusterId.set(y*w+x, n.id)));
 
   const edges = traceEdges(skel, w, h, deg, nodes, pixelClusterId);
   rec.nodes = nodes;

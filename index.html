@@ -28,6 +28,24 @@
   header{grid-column:1/4;display:flex;align-items:center;justify-content:space-between;
     padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line);}
   header .sub{color:var(--text-dim);font-size:12px;}
+  header a.github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--green);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel2);
+    transition: .12s background, .12s border-color;
+  }
+  header a.github-link:hover {
+    background: var(--line);
+    border-color: var(--green-dim);
+  }
   #left{grid-row:2;background:var(--panel);border-left:1px solid var(--line);
     padding:14px;overflow-y:auto;}
   #center{grid-row:2;overflow:auto;background:#060907;position:relative;
@@ -194,10 +212,13 @@
       <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
       <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
     </div>
-    <div class="lang-switcher">
-      <button id="langHe" onclick="changeLang('he')">עברית</button>
-      <button id="langEn" onclick="changeLang('en')">English</button>
-      <button id="langAr" onclick="changeLang('ar')">العربية</button>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" data-i18n="githubLink">GitHub</a>
+      <div class="lang-switcher">
+        <button id="langHe" onclick="changeLang('he')">עברית</button>
+        <button id="langEn" onclick="changeLang('en')">English</button>
+        <button id="langAr" onclick="changeLang('ar')">العربية</button>
+      </div>
     </div>
   </header>
 
@@ -485,6 +506,7 @@ const translations = {
     exportCurrent: "ייצוא CSV — תמונה זו",
     exportAll: "ייצוא CSV — כל התמונות",
     dropHint: "גררו תמונה או השתמשו בכפתור \"תמונות\" משמאל",
+    githubLink: "GitHub",
     thNodes: "#",
     thActual: "אורך בפועל",
     thStraight: "מרחק ישר",
@@ -600,6 +622,7 @@ const translations = {
     exportCurrent: "Export CSV — This Image",
     exportAll: "Export CSV — All Images",
     dropHint: "Drag an image here or use the 'Images' button on the left",
+    githubLink: "GitHub",
     thNodes: "#",
     thActual: "Actual Length",
     thStraight: "Straight Dist.",
@@ -715,6 +738,7 @@ const translations = {
     exportCurrent: "تصدير CSV — هذه الصورة",
     exportAll: "تصدير CSV — جميع الصور",
     dropHint: "اسحب صورة هنا أو استخدم زر \"الصور\" على اليسار",
+    githubLink: "GitHub",
     thNodes: "#",
     thActual: "الطول الفعلي",
     thStraight: "المسافة المستقيمة",

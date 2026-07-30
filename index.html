@@ -1495,12 +1495,37 @@ function detectGraph(rec){
                             // later in mergeCloseNodes, which is aware of real traced
                             // path length and can't jump across empty space.
   const clusters = clusterPoints(branchPixels, clusterRadius);
+let nodes = clusters.map((pts,i)=>{
+  const cx = pts.reduce((s,p)=>s+p[0],0)/pts.length;
+  const cy = pts.reduce((s,p)=>s+p[1],0)/pts.length;
+  return { id:'tmp'+i, x:cx, y:cy, pixels:pts };
+});
 
-  const nodes = clusters.map((pts,i)=>{
-    const cx = pts.reduce((s,p)=>s+p[0],0)/pts.length;
-    const cy = pts.reduce((s,p)=>s+p[1],0)/pts.length;
-    return { id:'n'+(i+1), x:cx, y:cy, pixels:pts };
+  // מיזוג גיאומטרי נוסף: כל שני צמתים קרובים מרחק ישר < geomMergeDist מתמזגים,
+// גם אם אין ביניהם קשת שזוהתה בשלב ה-trace
+function geometricMergeNodes(nodes, radius){
+  const parent = nodes.map((_,i)=>i);
+  function find(a){ while(parent[a]!==a){parent[a]=parent[parent[a]];a=parent[a];} return a; }
+  function union(a,b){ const ra=find(a),rb=find(b); if(ra!==rb) parent[ra]=rb; }
+  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+    if(Math.hypot(nodes[i].x-nodes[j].x, nodes[i].y-nodes[j].y) < radius) union(i,j);
+  }
+  const groups = new Map();
+  nodes.forEach((n,i)=>{
+    const r = find(i);
+    if(!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(n);
   });
+  return Array.from(groups.values()).map((grp,i)=>{
+    const allPixels = grp.flatMap(n=>n.pixels);
+    const cx = allPixels.reduce((s,p)=>s+p[0],0)/allPixels.length;
+    const cy = allPixels.reduce((s,p)=>s+p[1],0)/allPixels.length;
+    return { id:'n'+(i+1), x:cx, y:cy, pixels:allPixels };
+  });
+}
+
+nodes = geometricMergeNodes(nodes, rec.mergeDist); // עכשיו mergeDist עובד גם גיאומטרית
+rec.nextNodeId = nodes.length+1;
   rec.nextNodeId = nodes.length+1;
 
   // map pixel -> clusterId (by nearest cluster among its own contributing pixels)

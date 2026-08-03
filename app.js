@@ -25,7 +25,7 @@ function applyTranslations(lang) {
     const key = el.getAttribute('data-i18n');
     if (dict[key]) {
       // Use innerHTML for titles with spans or hints with bold styling
-      if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err')) {
+      if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err') || key.startsWith('tabMobile')) {
         el.innerHTML = dict[key];
       } else {
         el.textContent = dict[key];
@@ -232,6 +232,42 @@ function loadPPTX(file) {
   reader.readAsArrayBuffer(file);
 }
 
+function setMobileTab(tabId) {
+  const app = document.getElementById('app');
+  // Remove all active classes on buttons
+  const buttons = document.querySelectorAll('#mobileTabs button');
+  buttons.forEach(btn => btn.classList.remove('active'));
+
+  // Remove tab-classes from app
+  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results');
+
+  // Add selected tab
+  if (tabId === 'images') {
+    app.classList.add('tab-images');
+    document.getElementById('tabMobImages').classList.add('active');
+  } else if (tabId === 'settings') {
+    app.classList.add('tab-settings');
+    document.getElementById('tabMobSettings').classList.add('active');
+  } else if (tabId === 'view') {
+    app.classList.add('tab-view');
+    document.getElementById('tabMobView').classList.add('active');
+  } else if (tabId === 'edit') {
+    app.classList.add('tab-edit');
+    document.getElementById('tabMobEdit').classList.add('active');
+  } else if (tabId === 'results') {
+    app.classList.add('tab-results');
+    document.getElementById('tabMobResults').classList.add('active');
+  }
+}
+
+// Bind mobile tab events
+document.getElementById('tabMobImages').addEventListener('click', () => setMobileTab('images'));
+document.getElementById('tabMobSettings').addEventListener('click', () => setMobileTab('settings'));
+document.getElementById('tabMobView').addEventListener('click', () => setMobileTab('view'));
+document.getElementById('tabMobEdit').addEventListener('click', () => setMobileTab('edit'));
+document.getElementById('tabMobResults').addEventListener('click', () => setMobileTab('results'));
+
+
 function loadFile(file){
   if (file.name.toLowerCase().endsWith('.pptx')) {
     loadPPTX(file);
@@ -284,6 +320,7 @@ function loadFile(file){
     log(getI18nStr('logLoaded', {name: file.name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
+    setMobileTab('view');
   };
   img.src = url;
 }
@@ -329,6 +366,7 @@ function loadImageFromUrl(url, name){
     log(getI18nStr('logLoaded', {name: name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
+    setMobileTab('view');
   };
   img.src = url;
 }
@@ -371,10 +409,69 @@ function refreshImgList(){
     });
 
     const avg = validEdges.length ? (validEdges.reduce((s,e)=>s+e.ratio,0)/validEdges.length).toFixed(3) : '—';
-    div.innerHTML = `<span class="name">${rec.name}</span><span class="ratio">${avg}</span>`;
+    div.innerHTML = `<span class="name" title="${rec.name}">${rec.name}</span><span class="ratio">${avg}</span><button class="btn-del-img" title="Delete Image">🗑️</button>`;
+    div.querySelector('.name').onclick = (e)=> { e.stopPropagation(); setActiveImage(rec.id); };
+    div.querySelector('.ratio').onclick = (e)=> { e.stopPropagation(); setActiveImage(rec.id); };
     div.onclick = ()=> setActiveImage(rec.id);
+
+    const delBtn = div.querySelector('.btn-del-img');
+    delBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      deleteImage(rec.id);
+    };
+
     els.imgList.appendChild(div);
   });
+}
+
+function deleteImage(id) {
+  if (!confirm(getI18nStr('confirmDeleteImage'))) {
+    return;
+  }
+  const idx = state.images.findIndex(img => img.id === id);
+  if (idx === -1) return;
+  state.images.splice(idx, 1);
+  log(`Image removed from analysis`);
+
+  if (state.activeId === id) {
+    if (state.images.length > 0) {
+      // Set to the next image or the previous one if last
+      const nextActiveIdx = Math.min(idx, state.images.length - 1);
+      setActiveImage(state.images[nextActiveIdx].id);
+    } else {
+      state.activeId = null;
+      state.selectedEdge = null;
+      cancelRedrawMode();
+      refreshImgList();
+
+      // Clear canvas
+      baseCtx.clearRect(0,0,els.base.width, els.base.height);
+      ovCtx.clearRect(0,0,els.overlay.width, els.overlay.height);
+      els.dropHint.style.display = 'flex';
+
+      // Disable UI controls
+      els.binMethod.disabled = true;
+      els.threshold.disabled = true;
+      els.adaptSize.disabled = true;
+      els.adaptC.disabled = true;
+      els.adaptMinTh.disabled = true;
+      els.fillHoles.disabled = true;
+      els.holeSize.disabled = true;
+      els.removeIslands.disabled = true;
+      els.islandSize.disabled = true;
+      els.btnPreviewBin.disabled = true;
+      els.btnToggleOverlay.disabled = true;
+      els.btnDetect.disabled = true;
+      els.mergeDist.disabled = true;
+      els.spurLenSlider.disabled = true;
+      els.btnDetectGemini.disabled = true;
+
+      updateStatsPanel();
+      renderEdgeTable();
+    }
+  } else {
+    refreshImgList();
+  }
 }
 
 function setActiveImage(id){

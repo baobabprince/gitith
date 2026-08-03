@@ -24,6 +24,13 @@ const translations = {
     thActual: "אורך בפועל",
     thStraight: "מרחק ישר",
     thRatio: "יחס",
+    // Mobile tabs
+    tabMobileImages: "תמונות",
+    tabMobileSettings: "הגדרות",
+    tabMobileView: "תצוגה",
+    tabMobileEdit: "עריכה",
+    tabMobileResults: "תוצאות",
+    confirmDeleteImage: "האם אתה בטוח שברצונך להסיר לחלוטין את התמונה הזו מהניתוח?",
     // Tour keys
     tourBtn: "מדריך סיור 🧭",
     tourPrev: "הקודם",
@@ -163,6 +170,13 @@ const translations = {
     thActual: "Actual Length",
     thStraight: "Straight Dist.",
     thRatio: "Ratio",
+    // Mobile tabs
+    tabMobileImages: "Images",
+    tabMobileSettings: "Settings",
+    tabMobileView: "View",
+    tabMobileEdit: "Edit",
+    tabMobileResults: "Results",
+    confirmDeleteImage: "Are you sure you want to completely remove this image from the analysis?",
     // Tour keys
     tourBtn: "Guided Tour 🧭",
     tourPrev: "Prev",
@@ -302,6 +316,13 @@ const translations = {
     thActual: "الطول الفعلي",
     thStraight: "المسافة المستقيمة",
     thRatio: "النسبة",
+    // Mobile tabs
+    tabMobileImages: "الصور",
+    tabMobileSettings: "الإعدادات",
+    tabMobileView: "عرض",
+    tabMobileEdit: "تعديل",
+    tabMobileResults: "النتائج",
+    confirmDeleteImage: "هل أنت متأكد من أنك تريد إزالة هذه الصورة بالكامل من التحليل؟",
     // Tour keys
     tourBtn: "جولة إرشادية 🧭",
     tourPrev: "السابق",

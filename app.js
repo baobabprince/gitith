@@ -187,11 +187,56 @@ els.fileInput.addEventListener('change', (e)=>{
 });
 els.canvasWrap.addEventListener('drop', e=>{
   e.preventDefault();
-  const files = Array.from(e.dataTransfer.files||[]).filter(f=>f.type.startsWith('image/'));
+  const files = Array.from(e.dataTransfer.files||[]).filter(f=>f.type.startsWith('image/') || f.name.toLowerCase().endsWith('.pptx'));
   files.forEach(loadFile);
 });
 
+function loadPPTX(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const arrayBuffer = e.target.result;
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const mediaFolder = zip.folder("ppt/media");
+      if (!mediaFolder) {
+        log(`<span style="color:#ff6b6b">${getI18nStr('errNoImagesInPPTX')}</span>`);
+        return;
+      }
+
+      const imageFiles = [];
+      mediaFolder.forEach((relativePath, zipEntry) => {
+        if (!zipEntry.dir && /\.(png|jpe?g|gif|webp|bmp|tiff)$/i.test(zipEntry.name)) {
+          imageFiles.push(zipEntry);
+        }
+      });
+
+      if (imageFiles.length === 0) {
+        log(`<span style="color:#ff6b6b">${getI18nStr('errNoImagesInPPTX')}</span>`);
+        return;
+      }
+
+      // Sort images by name so they load in order
+      imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+
+      for (const zipEntry of imageFiles) {
+        const blob = await zipEntry.async("blob");
+        const cleanName = zipEntry.name.substring(zipEntry.name.lastIndexOf('/') + 1);
+        const renamedFile = new File([blob], `${file.name} - ${cleanName}`, { type: blob.type });
+        loadFile(renamedFile);
+      }
+    } catch (err) {
+      log(`<span style="color:#ff6b6b">${getI18nStr('errPPTXLoad', {err: err.message})}</span>`);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 function loadFile(file){
+  if (file.name.toLowerCase().endsWith('.pptx')) {
+    loadPPTX(file);
+    return;
+  }
   const img = new Image();
   const url = URL.createObjectURL(file);
   img.onload = ()=>{

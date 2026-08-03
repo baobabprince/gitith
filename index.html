@@ -44,7 +44,7 @@
   <div id="left">
     <div class="block">
       <h2 data-i18n="lblImages">1. תמונות</h2>
-      <input type="file" id="fileInput" accept="image/*" multiple>
+      <input type="file" id="fileInput" accept="image/*,.pptx" multiple>
       <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
       <div id="imgList" style="margin-top:10px;"></div>
     </div>
@@ -305,6 +305,7 @@
   </div>
 </div>
 
+<script src="vendor/jszip.min.js"></script>
 <script src="translations.js"></script>
 <script src="app.js"></script>
 </body>

@@ -2,11 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TJ Undulation Analyzer — ניתוח פיתולי צמתי הדוקים</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="app">
+<div id="app" class="tab-images">
   <header>
     <div style="display:flex; flex-direction:column; gap:2px;">
       <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
@@ -22,6 +23,15 @@
       </div>
     </div>
   </header>
+
+  <!-- Mobile Tab Navigation -->
+  <nav id="mobileTabs">
+    <button id="tabMobImages" class="active" data-i18n="tabMobileImages">תמונות</button>
+    <button id="tabMobSettings" data-i18n="tabMobileSettings">הגדרות</button>
+    <button id="tabMobView" data-i18n="tabMobileView">תצוגה</button>
+    <button id="tabMobEdit" data-i18n="tabMobileEdit">עריכה</button>
+    <button id="tabMobResults" data-i18n="tabMobileResults">תוצאות</button>
+  </nav>
 
   <!-- Guided Tour Elements -->
   <div id="tourHighlight"></div>
@@ -42,15 +52,17 @@
 
   <!-- LEFT: images + detection controls -->
   <div id="left">
-    <div class="block">
-      <h2 data-i18n="lblImages">1. תמונות</h2>
+    <!-- IMAGES BLOCK -->
+    <div class="block" id="blockImages">
+      <h2 data-i18n="lblImages">תמונות</h2>
       <input type="file" id="fileInput" accept="image/*,.pptx" multiple>
       <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
       <div id="imgList" style="margin-top:10px;"></div>
     </div>
 
-    <div class="block">
-      <h2 data-i18n="lblBinarization">2. עיבוד מקדים ובינריזציה</h2>
+    <!-- STEP 1: PREPROCESSING & BINARIZATION -->
+    <div class="block" id="blockBinarization">
+      <h2 data-i18n="lblBinarization">1. עיבוד מקדים ובינריזציה</h2>
       <label class="small">
         <span data-i18n="lblBinMethod">שיטת בינריזציה:</span>
         <span class="tooltip-container">
@@ -148,14 +160,24 @@
           <input type="range" id="islandSize" min="10" max="1000" value="100" disabled>
         </div>
       </div>
-
-      <div class="row" style="margin-top:10px;">
-        <button id="btnPreviewBin" style="flex:1;" disabled data-i18n="btnPreviewBin">תצוגת סף (בינארי)</button>
-        <button id="btnToggleOverlay" style="flex:1;" disabled data-i18n="btnToggleOverlay">הצג/הסתר סימונים</button>
-      </div>
     </div>
 
-    <div class="block">
+    <!-- STEP 2: SKELETONIZATION & PRUNING -->
+    <div class="block" id="blockSkeletonization">
+      <h2 data-i18n="lblSkeletonization">2. דיקוק וניקוי שלד</h2>
+      <label class="small">
+        <span data-i18n="lblSpurLen">אורך מינימלי לזיז אמיתי (px):</span>
+        <span class="tooltip-container">
+          <span class="tooltip-icon">?</span>
+          <span class="tooltip-content" data-i18n="hintTooltipSpurLen"></span>
+        </span>
+        <span id="spurLenVal">—</span>
+      </label>
+      <input type="range" id="spurLenSlider" min="5" max="100" value="20" disabled>
+    </div>
+
+    <!-- STEP 3: JUNCTION FINDING & GRAPH -->
+    <div class="block" id="blockJunctionGraph">
       <h2 data-i18n="lblJunctionGraph">3. זיהוי צמתים וגרף</h2>
       <div class="modebar" style="margin-bottom:10px;">
         <button id="tabClassical" class="active-mode" data-i18n="tabClassical">קלאסי</button>
@@ -172,16 +194,6 @@
           <span id="mergeVal">—</span>
         </label>
         <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
-
-        <label class="small" style="margin-top:8px;">
-          <span data-i18n="lblSpurLen">אורך מינימלי לזיז אמיתי (px):</span>
-          <span class="tooltip-container">
-            <span class="tooltip-icon">?</span>
-            <span class="tooltip-content" data-i18n="hintTooltipSpurLen"></span>
-          </span>
-          <span id="spurLenVal">—</span>
-        </label>
-        <input type="range" id="spurLenSlider" min="5" max="100" value="20" disabled>
 
         <div class="row" style="margin-top:8px;">
           <button id="btnDetect" class="primary" style="width:100%;" disabled data-i18n="btnDetect">הרץ זיהוי מלא</button>
@@ -228,24 +240,9 @@
       </div>
     </div>
 
-    <!-- 3.5. Open edges auto-connect controls -->
-    <div class="block" style="border-top:1px solid var(--line); padding-top:12px;">
-      <label class="small">
-        <span data-i18n="lblOpenEdgeRadius">רדיוס חיבור אוטומטי של קצוות (px):</span>
-        <span class="tooltip-container">
-          <span class="tooltip-icon">?</span>
-          <span class="tooltip-content" data-i18n="hintTooltipOpenEdgeRadius"></span>
-        </span>
-        <span id="openEdgeRadiusVal">25</span>
-      </label>
-      <input type="range" id="openEdgeRadius" min="5" max="150" value="25">
-      <div class="row" style="margin-top:8px;">
-        <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר קצוות פתוחים</button>
-      </div>
-    </div>
-
-    <div class="block">
-      <h2 data-i18n="lblManualEdit">4. עריכה ידנית</h2>
+    <!-- STEP 4: MANUAL EDITING & REFINEMENT -->
+    <div class="block" id="blockManualEdit">
+      <h2 data-i18n="lblManualEdit">4. עריכה ידנית וליטוש</h2>
       <div class="modebar">
         <button id="modeSelect" class="active-mode" data-i18n="modeSelect">בחירה</button>
         <button id="modeAddNode" data-i18n="modeAddNode">הוספת צומת</button>
@@ -259,11 +256,45 @@
       <div class="hint" id="modeHint" data-i18n="hintSelect">
         מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.
       </div>
+
+      <!-- Open edges auto-connect controls inside Step 4 -->
+      <div id="blockOpenEdges" style="border-top:1px solid var(--line); margin-top:12px; padding-top:12px;">
+        <label class="small">
+          <span data-i18n="lblOpenEdgeRadius">רדיוס חיבור אוטומטי של קצוות (px):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipOpenEdgeRadius"></span>
+          </span>
+          <span id="openEdgeRadiusVal">25</span>
+        </label>
+        <input type="range" id="openEdgeRadius" min="5" max="150" value="25">
+        <div class="row" style="margin-top:8px;">
+          <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר קצוות פתוחים</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- CENTER: canvas -->
   <div id="center">
+    <div id="zoomControls">
+      <button id="btnZoomIn" title="Zoom In" data-i18n-title="zoomIn">+</button>
+      <button id="btnZoomOut" title="Zoom Out" data-i18n-title="zoomOut">−</button>
+      <button id="btnZoomReset" title="Reset View" data-i18n-title="zoomReset">🔄</button>
+      <button id="btnZoomPan" title="Pan Mode" data-i18n-title="zoomPan">✋</button>
+    </div>
+
+    <!-- Central View Selector -->
+    <div id="viewSelectorContainer">
+      <span class="selector-label" data-i18n="lblViewMode">מצב תצוגה:</span>
+      <div id="viewSelector" class="modebar">
+        <button id="viewOriginal" data-view="original" data-i18n="viewOriginal">תמונה מקורית</button>
+        <button id="viewBinary" data-view="binary" data-i18n="viewBinary">מסכת סף (1)</button>
+        <button id="viewSkeleton" data-view="skeleton" data-i18n="viewSkeleton">שלד (2)</button>
+        <button id="viewGraph" class="active-mode" data-view="graph" data-i18n="viewGraph">גרף מלא (3-4)</button>
+      </div>
+    </div>
+
     <div id="canvasWrap">
       <canvas id="base"></canvas>
       <canvas id="overlay"></canvas>

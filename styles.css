@@ -42,10 +42,49 @@
   }
   #left{grid-row:2;background:var(--panel);border-left:1px solid var(--line);
     padding:14px;overflow-y:auto;}
-  #center{grid-row:2;overflow:auto;background:#060907;position:relative;
-    display:flex;align-items:flex-start;justify-content:flex-start;padding:20px;}
+  #center{grid-row:2;overflow:hidden;background:#060907;position:relative;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;padding:20px;gap:12px;}
   #right{grid-row:2;background:var(--panel);border-right:1px solid var(--line);
     padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+
+  /* Zoom controls and Canvas wrapping styles */
+  #zoomControls {
+    position: absolute;
+    top: 20px;
+    inset-inline-end: 20px;
+    z-index: 998;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(11, 15, 13, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  #zoomControls button {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    user-select: none;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  #zoomControls button:hover {
+    border-color: var(--green);
+  }
+  #zoomControls button.active-panning {
+    outline: 2px solid var(--green);
+    background: var(--green-dim);
+    color: #04120a;
+  }
 
   .block{margin-bottom:18px;}
   button{
@@ -63,11 +102,35 @@
   input[type=range]{width:100%;accent-color:var(--green);}
   input[type=file]{font-size:12px;color:var(--text-dim);width:100%;}
   label.small{font-size:11px;color:var(--text-dim);display:block;margin-bottom:3px;position:relative;}
-  .imgItem{padding:8px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;
+  #imgList {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px;
+    margin-top: 10px;
+  }
+  .imgItem{padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin-bottom:4px;
     cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
   .imgItem.active{border-color:var(--green);background:#0e1710;}
-  .imgItem .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
-  .imgItem .ratio{color:var(--green);font-variant-numeric:tabular-nums;}
+  .imgItem .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;flex:1;}
+  .imgItem .ratio{color:var(--green);font-variant-numeric:tabular-nums;margin-inline-end: 4px;}
+  .imgItem .btn-del-img {
+    background: transparent;
+    border: none;
+    color: var(--warn);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 13px;
+    border-radius: 4px;
+    transition: background 0.12s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .imgItem .btn-del-img:hover {
+    background: rgba(255, 107, 107, 0.15);
+  }
   .stat{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;
         border-bottom:1px dashed var(--line);}
   .stat b{color:var(--green);font-variant-numeric:tabular-nums;}
@@ -88,7 +151,13 @@
   .modebar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
   .modebar button{flex:1;min-width:70px;font-size:12px;}
   canvas{display:block;image-rendering:pixelated;}
-  #canvasWrap{position:relative;box-shadow:0 0 0 1px var(--line);}
+  #canvasWrap{
+    position:relative;
+    box-shadow:0 0 0 1px var(--line);
+    transform-origin: 0 0;
+    transition: none;
+    will-change: transform;
+  }
   #overlay{position:absolute;top:0;left:0;cursor:crosshair;}
   #dropHint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:var(--text-dim);font-size:14px;border:2px dashed var(--line);border-radius:10px;
@@ -289,4 +358,207 @@
   }
   #tourTooltip .skip-btn:hover {
     color: var(--text);
+  }
+
+  /* Desktop Mobile Tabs Hiding */
+  #mobileTabs {
+    display: none;
+  }
+
+  /* Mobile responsive overrides */
+  @media (max-width: 900px) {
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      grid-template-columns: none;
+      grid-template-rows: auto 1fr;
+    }
+    header {
+      flex-direction: column;
+      height: auto;
+      padding: 10px;
+      gap: 10px;
+      align-items: center;
+      text-align: center;
+    }
+    header div {
+      align-items: center;
+    }
+
+    #mobileTabs {
+      display: flex;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+    }
+    #mobileTabs button {
+      flex: 1;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      padding: 12px 6px;
+      font-size: 12.5px;
+      color: var(--text-dim);
+      border-bottom: 2px solid transparent;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      text-align: center;
+    }
+    #mobileTabs button.active {
+      color: var(--green);
+      border-bottom: 2px solid var(--green);
+      background: rgba(57, 255, 158, 0.05);
+    }
+
+    #left, #center, #right {
+      display: none !important;
+      width: 100% !important;
+      height: auto !important;
+      flex: 1 1 auto !important;
+      border: none !important;
+      padding: 12px !important;
+      overflow-y: auto !important;
+    }
+
+    /* Active Mobile Tabs */
+    #app.tab-images #left {
+      display: block !important;
+    }
+    #app.tab-images #left #blockImages { display: block !important; }
+    #app.tab-images #left #blockBinarization,
+    #app.tab-images #left #blockSkeletonization,
+    #app.tab-images #left #blockJunctionGraph,
+    #app.tab-images #left #blockOpenEdges,
+    #app.tab-images #left #blockManualEdit { display: none !important; }
+
+    #app.tab-settings #left {
+      display: block !important;
+    }
+    #app.tab-settings #left #blockBinarization,
+    #app.tab-settings #left #blockSkeletonization,
+    #app.tab-settings #left #blockJunctionGraph,
+    #app.tab-settings #left #blockOpenEdges { display: block !important; }
+    #app.tab-settings #left #blockImages,
+    #app.tab-settings #left #blockManualEdit { display: none !important; }
+
+    #app.tab-edit #left {
+      display: block !important;
+      flex: 0 0 auto !important;
+      height: auto !important;
+      max-height: 45% !important;
+      border-bottom: 1px solid var(--line) !important;
+    }
+    #app.tab-edit #left #blockManualEdit { display: block !important; }
+    #app.tab-edit #left #blockImages,
+    #app.tab-edit #left #blockBinarization,
+    #app.tab-edit #left #blockSkeletonization,
+    #app.tab-edit #left #blockJunctionGraph,
+    #app.tab-edit #left #blockOpenEdges { display: none !important; }
+
+    #app.tab-edit #center {
+      display: flex !important;
+      flex: 1 1 auto !important;
+      height: auto !important;
+      min-height: 350px;
+    }
+
+    #app.tab-view #center {
+      display: flex !important;
+    }
+
+    #app.tab-results #right {
+      display: flex !important;
+    }
+
+    /* Style improvements for image item delete button */
+    .imgItem .btn-del-img {
+      background: transparent;
+      border: none;
+      color: var(--warn);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 13px;
+      border-radius: 4px;
+      transition: background 0.12s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .imgItem .btn-del-img:hover {
+      background: rgba(255, 107, 107, 0.15);
+    }
+  }
+
+  /* Central View Selector */
+  #viewSelectorContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-bottom: 4px;
+    width: 100%;
+    max-width: 650px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-sizing: border-box;
+  }
+  #viewSelectorContainer .selector-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  #viewSelector {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0 !important;
+    flex: 1;
+  }
+  #viewSelector button {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  #viewSelector button:hover {
+    color: var(--text);
+    border-color: var(--green-dim);
+  }
+  #viewSelector button.active-mode {
+    background: var(--green-dim);
+    border-color: var(--green);
+    color: #04120a;
+    font-weight: bold;
+    box-shadow: 0 0 8px rgba(57, 255, 158, 0.3);
+    outline: none;
+  }
+
+  /* Styling to make step headers pop */
+  .block h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }

@@ -443,7 +443,8 @@
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <button id="btnPreviewBin" style="width:100%;" disabled data-i18n="btnPreviewBin">תצוגת סף (בינארי)</button>
+        <button id="btnPreviewBin" style="flex:1;" disabled data-i18n="btnPreviewBin">תצוגת סף (בינארי)</button>
+        <button id="btnToggleOverlay" style="flex:1;" disabled data-i18n="btnToggleOverlay">הצג/הסתר סימונים</button>
       </div>
     </div>
 
@@ -613,6 +614,7 @@ const translations = {
     cancelRedraw: "בטל",
     btnLoadModels: "טען רשימת מודלים",
     btnPreviewBin: "תצוגת סף (בינארי)",
+    btnToggleOverlay: "הצג/הסתר סימונים",
     btnDetect: "הרץ זיהוי מלא",
     btnDetectGemini: "זהה צמתים עם Gemini",
     btnLoadExample: "טען תמונת דוגמה",
@@ -718,6 +720,8 @@ const translations = {
     logLoadingModels: "טוען רשימת מודלים מ-Google...",
     logPreviewBinOn: "תצוגת סף בינארי הופעלה",
     logPreviewBinOff: "תצוגת סף בינארי כובתה",
+    logToggleOverlayOn: "הסתרת סימונים הופעלה (תצוגת תמונה מקורית)",
+    logToggleOverlayOff: "הצגת סימונים הופעלה",
     thInclude: "כלול בסטט'",
     hintTooltipBinMethod: "בחירת שיטת ההפרדה בין הדפנות לרקע. השיטה האדפטיבית מחשבת סף מקומי ומצוינת לתמונות עם תאורה לא אחידה. השיטה הגלובלית (Otsu) קובעת סף אחיד לכל התמונה.",
     hintTooltipThreshold: "קובע את סף הבהירות המינימלי לחלבון (בטווח 0-255). פיקסלים בהירים מסף זה יוגדרו כחלק מהדופן. ערך גבוה מדי יקטע את הדפנות, ערך נמוך מדי יכניס רעש.",
@@ -747,6 +751,7 @@ const translations = {
     cancelRedraw: "Cancel",
     btnLoadModels: "Load Models",
     btnPreviewBin: "Threshold Preview (Binary)",
+    btnToggleOverlay: "Show/Hide Marks",
     btnDetect: "Run Full Detection",
     btnDetectGemini: "Detect Junctions with Gemini",
     btnLoadExample: "Load Example Image",
@@ -852,6 +857,8 @@ const translations = {
     logLoadingModels: "Loading model list from Google...",
     logPreviewBinOn: "Binary preview turned ON",
     logPreviewBinOff: "Binary preview turned OFF",
+    logToggleOverlayOn: "Hide marks enabled (showing original image only)",
+    logToggleOverlayOff: "Show marks enabled",
     thInclude: "Include",
     hintTooltipBinMethod: "Choose how to separate boundaries from the background. Adaptive thresholding computes a local threshold and is great for uneven lighting. Global (Otsu) sets a single uniform threshold.",
     hintTooltipThreshold: "Sets the minimum brightness threshold for the green channel (0-255). Pixels brighter than this are marked as boundaries. Too high splits boundaries; too low includes noise.",
@@ -881,6 +888,7 @@ const translations = {
     cancelRedraw: "إلغاء",
     btnLoadModels: "تحميل النماذج",
     btnPreviewBin: "معاينة العتبة (ثنائي)",
+    btnToggleOverlay: "إظهار/إخفاء العلامات",
     btnDetect: "تشغيل الكشف الكامل",
     btnDetectGemini: "كشف الموصلات عبر Gemini",
     btnLoadExample: "تحميل صورة تجريبية",
@@ -986,6 +994,8 @@ const translations = {
     logLoadingModels: "تحميل قائمة النماذج من Google...",
     logPreviewBinOn: "تم تشغيل معاينة العتبة الثنائية",
     logPreviewBinOff: "تم إيقاف معاينة العتبة الثنائية",
+    logToggleOverlayOn: "تم تفعيل إخفاء العلامات (عرض الصورة الأصلية فقط)",
+    logToggleOverlayOff: "تم تفعيل إظهار العلامات",
     thInclude: "تضمين",
     hintTooltipBinMethod: "اختر طريقة فصل الحدود عن الخلفية. تحسب العتبة التكيفية عتبة محلية وهي ممتازة للإضاءة غير المتساوية. تحدد العتبة العالمية (Otsu) عتبة موحدة للصورة بأكملها.",
     hintTooltipThreshold: "يحدد الحد الأدنى لسطوع القناة الخضراء (0-255). يتم تمييز البكسلات الأكثر سطوعًا كحدود. القيمة العالية جدًا تؤدي لتجزئة الحدود؛ والمنخفضة جدًا تشمل الضوضاء.",
@@ -1099,6 +1109,7 @@ const state = {
   selectedEdge: null,
   redraw: {active:false, points:[]},
   showBinary: false,
+  hideAllMarks: false,
 };
 
 const els = {
@@ -1137,6 +1148,7 @@ const els = {
   geminiModel: document.getElementById('geminiModel'),
   btnDetectGemini: document.getElementById('btnDetectGemini'),
   btnPreviewBin: document.getElementById('btnPreviewBin'),
+  btnToggleOverlay: document.getElementById('btnToggleOverlay'),
   btnDetect: document.getElementById('btnDetect'),
   base: document.getElementById('base'),
   overlay: document.getElementById('overlay'),
@@ -1359,6 +1371,7 @@ function setActiveImage(id){
   els.removeIslands.disabled = false;
   els.islandSize.disabled = !rec.removeIslands;
   els.btnPreviewBin.disabled = false;
+  els.btnToggleOverlay.disabled = false;
   els.btnDetect.disabled = false;
   els.mergeDist.disabled = false;
   els.spurLenSlider.disabled = false;
@@ -1495,6 +1508,32 @@ els.btnPreviewBin.addEventListener('click', ()=>{
     log(getI18nStr('logPreviewBinOff'));
   }
   drawOverlay();
+});
+
+els.btnToggleOverlay.addEventListener('click', ()=>{
+  const rec = activeImg(); if(!rec) return;
+  state.hideAllMarks = !state.hideAllMarks;
+  if(state.hideAllMarks){
+    els.btnToggleOverlay.classList.add('active-mode');
+    log(getI18nStr('logToggleOverlayOn'));
+  } else {
+    els.btnToggleOverlay.classList.remove('active-mode');
+    log(getI18nStr('logToggleOverlayOff'));
+  }
+  drawOverlay();
+});
+
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+    return;
+  }
+  if (state.mode === 'select' && state.selectedEdge) {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      deleteEdge(state.selectedEdge);
+    }
+  }
 });
 
 function smoothGreen(imgData){
@@ -2497,6 +2536,10 @@ function drawOverlay(){
   ovCtx.clearRect(0,0,els.overlay.width, els.overlay.height);
   if(!rec) return;
 
+  if (state.hideAllMarks) {
+    return;
+  }
+
   // If binary display toggle is on, draw binary overlay as a semi-transparent, subtle mask first
   if (state.showBinary) {
     const bin = binarize(rec);
@@ -2616,7 +2659,12 @@ function renderEdgeTable(){
       e.includeInStats = !e.incomplete;
     }
     const tr = document.createElement('tr');
-    if(e.id===state.selectedEdge) tr.className='sel';
+    if(e.id===state.selectedEdge) {
+      tr.className='sel';
+      setTimeout(() => {
+        tr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }, 0);
+    }
 
     const displayStraight = e.n2 ? e.straight.toFixed(1) : e.straight.toFixed(1);
     const displayRatio = isFinite(e.ratio) ? e.ratio.toFixed(3) : '—';

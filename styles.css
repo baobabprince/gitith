@@ -42,10 +42,49 @@
   }
   #left{grid-row:2;background:var(--panel);border-left:1px solid var(--line);
     padding:14px;overflow-y:auto;}
-  #center{grid-row:2;overflow:auto;background:#060907;position:relative;
+  #center{grid-row:2;overflow:hidden;background:#060907;position:relative;
     display:flex;align-items:flex-start;justify-content:flex-start;padding:20px;}
   #right{grid-row:2;background:var(--panel);border-right:1px solid var(--line);
     padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+
+  /* Zoom controls and Canvas wrapping styles */
+  #zoomControls {
+    position: absolute;
+    top: 20px;
+    inset-inline-end: 20px;
+    z-index: 998;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(11, 15, 13, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  #zoomControls button {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    user-select: none;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  #zoomControls button:hover {
+    border-color: var(--green);
+  }
+  #zoomControls button.active-panning {
+    outline: 2px solid var(--green);
+    background: var(--green-dim);
+    color: #04120a;
+  }
 
   .block{margin-bottom:18px;}
   button{
@@ -112,7 +151,13 @@
   .modebar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
   .modebar button{flex:1;min-width:70px;font-size:12px;}
   canvas{display:block;image-rendering:pixelated;}
-  #canvasWrap{position:relative;box-shadow:0 0 0 1px var(--line);}
+  #canvasWrap{
+    position:relative;
+    box-shadow:0 0 0 1px var(--line);
+    transform-origin: 0 0;
+    transition: none;
+    will-change: transform;
+  }
   #overlay{position:absolute;top:0;left:0;cursor:crosshair;}
   #dropHint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:var(--text-dim);font-size:14px;border:2px dashed var(--line);border-radius:10px;

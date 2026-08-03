@@ -31,6 +31,10 @@ const translations = {
     tabMobileEdit: "עריכה",
     tabMobileResults: "תוצאות",
     confirmDeleteImage: "האם אתה בטוח שברצונך להסיר לחלוטין את התמונה הזו מהניתוח?",
+    zoomIn: "התקרב (+)",
+    zoomOut: "התרחק (−)",
+    zoomReset: "איפוס תצוגה",
+    zoomPan: "מצב הזזה (החזק מקש רווח או הפעל כפתור זה)",
     // Tour keys
     tourBtn: "מדריך סיור 🧭",
     tourPrev: "הקודם",
@@ -177,6 +181,10 @@ const translations = {
     tabMobileEdit: "Edit",
     tabMobileResults: "Results",
     confirmDeleteImage: "Are you sure you want to completely remove this image from the analysis?",
+    zoomIn: "Zoom In (+)",
+    zoomOut: "Zoom Out (−)",
+    zoomReset: "Reset View",
+    zoomPan: "Pan Mode (Hold Spacebar or toggle this button)",
     // Tour keys
     tourBtn: "Guided Tour 🧭",
     tourPrev: "Prev",
@@ -323,6 +331,10 @@ const translations = {
     tabMobileEdit: "تعديل",
     tabMobileResults: "النتائج",
     confirmDeleteImage: "هل أنت متأكد من أنك تريد إزالة هذه الصورة بالكامل من التحليل؟",
+    zoomIn: "تكبير (+)",
+    zoomOut: "تصغير (−)",
+    zoomReset: "إعادة ضبط العرض",
+    zoomPan: "وضع التحريك (اضغط مسافة أو فعل هذا الزר)",
     // Tour keys
     tourBtn: "جولة إرشادية 🧭",
     tourPrev: "السابق",

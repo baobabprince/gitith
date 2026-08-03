@@ -25,7 +25,7 @@ function applyTranslations(lang) {
     const key = el.getAttribute('data-i18n');
     if (dict[key]) {
       // Use innerHTML for titles with spans or hints with bold styling
-      if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err')) {
+      if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err') || key.startsWith('tabMobile')) {
         el.innerHTML = dict[key];
       } else {
         el.textContent = dict[key];
@@ -41,6 +41,16 @@ function applyTranslations(lang) {
   } else {
     els.geminiKey.placeholder = 'AIza...';
   }
+
+  // Update zoom title translations
+  const zoomInBtn = document.getElementById('btnZoomIn');
+  const zoomOutBtn = document.getElementById('btnZoomOut');
+  const zoomResetBtn = document.getElementById('btnZoomReset');
+  const zoomPanBtn = document.getElementById('btnZoomPan');
+  if (zoomInBtn) zoomInBtn.title = dict.zoomIn || 'Zoom In';
+  if (zoomOutBtn) zoomOutBtn.title = dict.zoomOut || 'Zoom Out';
+  if (zoomResetBtn) zoomResetBtn.title = dict.zoomReset || 'Reset View';
+  if (zoomPanBtn) zoomPanBtn.title = dict.zoomPan || 'Pan Mode';
 
   // Reload current UI panels
   const rec = activeImg();
@@ -94,6 +104,22 @@ const state = {
   redraw: {active:false, points:[]},
   showBinary: false,
   hideAllMarks: false,
+};
+
+// Global Zoom & Pan State
+const zoomState = {
+  scale: 1,
+  x: 0,
+  y: 0,
+  isPanning: false,
+  panModeActive: false,
+  spacePressed: false,
+  startX: 0,
+  startY: 0,
+  lastTouchDistance: 0,
+  lastTouchX: 0,
+  lastTouchY: 0,
+  didDrag: false
 };
 
 const els = {
@@ -232,6 +258,42 @@ function loadPPTX(file) {
   reader.readAsArrayBuffer(file);
 }
 
+function setMobileTab(tabId) {
+  const app = document.getElementById('app');
+  // Remove all active classes on buttons
+  const buttons = document.querySelectorAll('#mobileTabs button');
+  buttons.forEach(btn => btn.classList.remove('active'));
+
+  // Remove tab-classes from app
+  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results');
+
+  // Add selected tab
+  if (tabId === 'images') {
+    app.classList.add('tab-images');
+    document.getElementById('tabMobImages').classList.add('active');
+  } else if (tabId === 'settings') {
+    app.classList.add('tab-settings');
+    document.getElementById('tabMobSettings').classList.add('active');
+  } else if (tabId === 'view') {
+    app.classList.add('tab-view');
+    document.getElementById('tabMobView').classList.add('active');
+  } else if (tabId === 'edit') {
+    app.classList.add('tab-edit');
+    document.getElementById('tabMobEdit').classList.add('active');
+  } else if (tabId === 'results') {
+    app.classList.add('tab-results');
+    document.getElementById('tabMobResults').classList.add('active');
+  }
+}
+
+// Bind mobile tab events
+document.getElementById('tabMobImages').addEventListener('click', () => setMobileTab('images'));
+document.getElementById('tabMobSettings').addEventListener('click', () => setMobileTab('settings'));
+document.getElementById('tabMobView').addEventListener('click', () => setMobileTab('view'));
+document.getElementById('tabMobEdit').addEventListener('click', () => setMobileTab('edit'));
+document.getElementById('tabMobResults').addEventListener('click', () => setMobileTab('results'));
+
+
 function loadFile(file){
   if (file.name.toLowerCase().endsWith('.pptx')) {
     loadPPTX(file);
@@ -284,6 +346,7 @@ function loadFile(file){
     log(getI18nStr('logLoaded', {name: file.name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
+    setMobileTab('view');
   };
   img.src = url;
 }
@@ -329,6 +392,7 @@ function loadImageFromUrl(url, name){
     log(getI18nStr('logLoaded', {name: name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
+    setMobileTab('view');
   };
   img.src = url;
 }
@@ -371,10 +435,96 @@ function refreshImgList(){
     });
 
     const avg = validEdges.length ? (validEdges.reduce((s,e)=>s+e.ratio,0)/validEdges.length).toFixed(3) : '—';
-    div.innerHTML = `<span class="name">${rec.name}</span><span class="ratio">${avg}</span>`;
+    div.innerHTML = `<span class="name" title="${rec.name}">${rec.name}</span><span class="ratio">${avg}</span><button class="btn-del-img" title="Delete Image">🗑️</button>`;
+    div.querySelector('.name').onclick = (e)=> { e.stopPropagation(); setActiveImage(rec.id); };
+    div.querySelector('.ratio').onclick = (e)=> { e.stopPropagation(); setActiveImage(rec.id); };
     div.onclick = ()=> setActiveImage(rec.id);
+
+    const delBtn = div.querySelector('.btn-del-img');
+    delBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      deleteImage(rec.id);
+    };
+
     els.imgList.appendChild(div);
   });
+}
+
+function deleteImage(id) {
+  if (!confirm(getI18nStr('confirmDeleteImage'))) {
+    return;
+  }
+  const idx = state.images.findIndex(img => img.id === id);
+  if (idx === -1) return;
+  state.images.splice(idx, 1);
+  log(`Image removed from analysis`);
+
+  if (state.activeId === id) {
+    if (state.images.length > 0) {
+      // Set to the next image or the previous one if last
+      const nextActiveIdx = Math.min(idx, state.images.length - 1);
+      setActiveImage(state.images[nextActiveIdx].id);
+    } else {
+      state.activeId = null;
+      state.selectedEdge = null;
+      cancelRedrawMode();
+      refreshImgList();
+
+      // Clear canvas
+      baseCtx.clearRect(0,0,els.base.width, els.base.height);
+      ovCtx.clearRect(0,0,els.overlay.width, els.overlay.height);
+      els.dropHint.style.display = 'flex';
+
+      // Disable UI controls
+      els.binMethod.disabled = true;
+      els.threshold.disabled = true;
+      els.adaptSize.disabled = true;
+      els.adaptC.disabled = true;
+      els.adaptMinTh.disabled = true;
+      els.fillHoles.disabled = true;
+      els.holeSize.disabled = true;
+      els.removeIslands.disabled = true;
+      els.islandSize.disabled = true;
+      els.btnPreviewBin.disabled = true;
+      els.btnToggleOverlay.disabled = true;
+      els.btnDetect.disabled = true;
+      els.mergeDist.disabled = true;
+      els.spurLenSlider.disabled = true;
+      els.btnDetectGemini.disabled = true;
+
+      updateStatsPanel();
+      renderEdgeTable();
+    }
+  } else {
+    refreshImgList();
+  }
+}
+
+function resetZoomPan() {
+  const rec = activeImg();
+  if (!rec) {
+    zoomState.scale = 1;
+    zoomState.x = 0;
+    zoomState.y = 0;
+    applyTransform();
+    return;
+  }
+  const viewport = document.getElementById('center');
+  if (!viewport) return;
+  const vw = viewport.clientWidth - 40;
+  const vh = viewport.clientHeight - 40;
+  const scale = Math.min(1, Math.min(vw / rec.width, vh / rec.height));
+  zoomState.scale = scale;
+  zoomState.x = (viewport.clientWidth - rec.width * scale) / 2;
+  zoomState.y = (viewport.clientHeight - rec.height * scale) / 2;
+  applyTransform();
+}
+
+function applyTransform() {
+  const wrap = document.getElementById('canvasWrap');
+  if (wrap) {
+    wrap.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px) scale(${zoomState.scale})`;
+  }
 }
 
 function setActiveImage(id){
@@ -388,6 +538,7 @@ function setActiveImage(id){
   els.base.width = els.overlay.width = rec.width;
   els.base.height = els.overlay.height = rec.height;
   baseCtx.putImageData(rec.imgData,0,0);
+  resetZoomPan();
 
   // Enable UI controls
   els.binMethod.disabled = false;
@@ -563,7 +714,32 @@ document.addEventListener('keydown', (e) => {
       deleteEdge(state.selectedEdge);
     }
   }
+  if (e.key === ' ' || e.key === 'Spacebar') {
+    zoomState.spacePressed = true;
+    updateCursor();
+  }
 });
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === ' ' || e.key === 'Spacebar') {
+    zoomState.spacePressed = false;
+    updateCursor();
+  }
+});
+
+function updateCursor() {
+  const overlay = els.overlay;
+  if (!overlay) return;
+  if (zoomState.spacePressed || zoomState.panModeActive) {
+    overlay.style.cursor = 'grab';
+  } else if (state.mode === 'select') {
+    overlay.style.cursor = 'crosshair';
+  } else if (state.mode === 'redraw') {
+    overlay.style.cursor = 'crosshair';
+  } else {
+    overlay.style.cursor = 'pointer';
+  }
+}
 
 function smoothGreen(imgData){
   // Two-pass 3x3 box blur on the green channel (approximates a wider
@@ -1785,11 +1961,28 @@ els.finishRedraw.onclick = ()=>{
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 };
 
+// Click / touch coordinate conversion considering zoomState transform
+function getCanvasCoords(clientX, clientY) {
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return { x: 0, y: 0 };
+  const rect = wrap.getBoundingClientRect();
+  const x = (clientX - rect.left) * (els.overlay.width / rect.width);
+  const y = (clientY - rect.top) * (els.overlay.height / rect.height);
+  return { x, y };
+}
+
 els.overlay.addEventListener('click', (e)=>{
+  // Ignore clicks if we are panning or if a drag gesture just finished
+  if (zoomState.didDrag) {
+    zoomState.didDrag = false;
+    return;
+  }
+  if (zoomState.spacePressed || zoomState.panModeActive) {
+    return;
+  }
+
   const rec = activeImg(); if(!rec) return;
-  const rect = els.overlay.getBoundingClientRect();
-  const x = (e.clientX-rect.left) * (els.overlay.width/rect.width);
-  const y = (e.clientY-rect.top) * (els.overlay.height/rect.height);
+  const { x, y } = getCanvasCoords(e.clientX, e.clientY);
 
   if(state.mode==='select'){
     const hit = findNearestEdge(rec, x, y, 8);
@@ -2178,7 +2371,196 @@ window.addEventListener('resize', () => {
   }
 });
 
+/* ===================== Zoom and Pan Mouse/Touch Event Listeners ===================== */
+function initZoomPanEvents() {
+  const center = document.getElementById('center');
+  const overlay = els.overlay;
+  if (!center || !overlay) return;
+
+  // Zoom In / Out click triggers
+  document.getElementById('btnZoomIn').addEventListener('click', () => {
+    zoomAtCenter(1.2);
+  });
+  document.getElementById('btnZoomOut').addEventListener('click', () => {
+    zoomAtCenter(1 / 1.2);
+  });
+  document.getElementById('btnZoomReset').addEventListener('click', () => {
+    resetZoomPan();
+  });
+
+  const panBtn = document.getElementById('btnZoomPan');
+  panBtn.addEventListener('click', () => {
+    zoomState.panModeActive = !zoomState.panModeActive;
+    if (zoomState.panModeActive) {
+      panBtn.classList.add('active-panning');
+    } else {
+      panBtn.classList.remove('active-panning');
+    }
+    updateCursor();
+  });
+
+  // Mouse wheel zoom centered on cursor
+  center.addEventListener('wheel', (e) => {
+    const rec = activeImg();
+    if (!rec) return;
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    zoomAtPoint(e.clientX, e.clientY, zoomFactor);
+  }, { passive: false });
+
+  // Panning with mouse (when Spacebar or Pan Mode is active)
+  overlay.addEventListener('mousedown', (e) => {
+    const rec = activeImg();
+    if (!rec) return;
+    if (zoomState.spacePressed || zoomState.panModeActive || e.button === 1) {
+      zoomState.isPanning = true;
+      zoomState.startX = e.clientX - zoomState.x;
+      zoomState.startY = e.clientY - zoomState.y;
+      zoomState.didDrag = false;
+      overlay.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (zoomState.isPanning) {
+      const dx = e.clientX - zoomState.startX;
+      const dy = e.clientY - zoomState.startY;
+      if (Math.hypot(dx - zoomState.x, dy - zoomState.y) > 3) {
+        zoomState.didDrag = true;
+      }
+      zoomState.x = dx;
+      zoomState.y = dy;
+      applyTransform();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (zoomState.isPanning) {
+      zoomState.isPanning = false;
+      updateCursor();
+    }
+  });
+
+  // Mobile pinch-to-zoom and multi-touch panning
+  overlay.addEventListener('touchstart', (e) => {
+    const rec = activeImg();
+    if (!rec) return;
+    zoomState.didDrag = false;
+    if (e.touches.length === 1) {
+      // Single finger panning (either Pan Mode or fallback)
+      zoomState.isPanning = true;
+      zoomState.startX = e.touches[0].clientX - zoomState.x;
+      zoomState.startY = e.touches[0].clientY - zoomState.y;
+      zoomState.lastTouchX = e.touches[0].clientX;
+      zoomState.lastTouchY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      // Two finger pinch to zoom + drag pan
+      zoomState.isPanning = false;
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      zoomState.lastTouchDistance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+      zoomState.lastTouchX = (touch1.clientX + touch2.clientX) / 2;
+      zoomState.lastTouchY = (touch1.clientY + touch2.clientY) / 2;
+    }
+  }, { passive: true });
+
+  overlay.addEventListener('touchmove', (e) => {
+    const rec = activeImg();
+    if (!rec) return;
+    if (e.touches.length === 1 && zoomState.isPanning) {
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      const dx = touchX - zoomState.startX;
+      const dy = touchY - zoomState.startY;
+      if (Math.hypot(touchX - zoomState.lastTouchX, touchY - zoomState.lastTouchY) > 4) {
+        zoomState.didDrag = true;
+      }
+      zoomState.x = dx;
+      zoomState.y = dy;
+      applyTransform();
+    } else if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+      const midX = (touch1.clientX + touch2.clientX) / 2;
+      const midY = (touch1.clientY + touch2.clientY) / 2;
+
+      zoomState.didDrag = true;
+
+      // Pinch zoom calculation
+      if (zoomState.lastTouchDistance > 0) {
+        const factor = dist / zoomState.lastTouchDistance;
+        zoomAtPoint(midX, midY, factor);
+      }
+
+      // Simultaneously pan with the center midpoint displacement
+      const dx = midX - zoomState.lastTouchX;
+      const dy = midY - zoomState.lastTouchY;
+      zoomState.x += dx;
+      zoomState.y += dy;
+      applyTransform();
+
+      zoomState.lastTouchDistance = dist;
+      zoomState.lastTouchX = midX;
+      zoomState.lastTouchY = midY;
+    }
+  }, { passive: true });
+
+  overlay.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      zoomState.isPanning = false;
+      zoomState.lastTouchDistance = 0;
+    } else if (e.touches.length === 1) {
+      // Re-initialize panning with the remaining finger
+      zoomState.isPanning = true;
+      zoomState.startX = e.touches[0].clientX - zoomState.x;
+      zoomState.startY = e.touches[0].clientY - zoomState.y;
+      zoomState.lastTouchDistance = 0;
+    }
+  }, { passive: true });
+}
+
+function zoomAtCenter(factor) {
+  const center = document.getElementById('center');
+  if (!center) return;
+  const rect = center.getBoundingClientRect();
+  const midX = rect.left + rect.width / 2;
+  const midY = rect.top + rect.height / 2;
+  zoomAtPoint(midX, midY, factor);
+}
+
+function zoomAtPoint(clientX, clientY, factor) {
+  const rec = activeImg();
+  if (!rec) return;
+  const center = document.getElementById('center');
+  if (!center) return;
+  const centerRect = center.getBoundingClientRect();
+
+  const wrap = document.getElementById('canvasWrap');
+  if (!wrap) return;
+  const wrapRect = wrap.getBoundingClientRect();
+
+  // Calculate coordinates relative to the #canvasWrap origin prior to scaling
+  const mouseX = clientX - wrapRect.left;
+  const mouseY = clientY - wrapRect.top;
+
+  const oldScale = zoomState.scale;
+  let newScale = oldScale * factor;
+  newScale = Math.max(0.1, Math.min(20, newScale)); // set scale limit constraints
+
+  const actualFactor = newScale / oldScale;
+
+  // Reposition translation anchor to center zoom on pointer
+  zoomState.scale = newScale;
+  zoomState.x = clientX - centerRect.left - (clientX - wrapRect.left - zoomState.x) * actualFactor;
+  zoomState.y = clientY - centerRect.top - (clientY - wrapRect.top - zoomState.y) * actualFactor;
+
+  applyTransform();
+}
+
 /* ===================== init ===================== */
+initZoomPanEvents();
 applyTranslations(currentLang);
 log(getI18nStr('logReady'));
 

@@ -150,10 +150,6 @@
         </div>
       </div>
 
-      <div class="row" style="margin-top:10px;">
-        <button id="btnPreviewBin" style="flex:1;" disabled data-i18n="btnPreviewBin">תצוגת סף (בינארי)</button>
-        <button id="btnToggleOverlay" style="flex:1;" disabled data-i18n="btnToggleOverlay">הצג/הסתר סימונים</button>
-      </div>
     </div>
 
     <div class="block" id="blockJunctionGraph">
@@ -278,6 +274,18 @@
 
   <!-- CENTER: canvas -->
   <div id="center">
+    <div id="viewToggleControls">
+      <label class="switch-container">
+        <input type="checkbox" id="switchShowBinary">
+        <span class="switch-slider"></span>
+        <span class="switch-label" data-i18n="lblShowBinary">סף בינארי</span>
+      </label>
+      <label class="switch-container">
+        <input type="checkbox" id="switchShowMarkings" checked>
+        <span class="switch-slider"></span>
+        <span class="switch-label" data-i18n="lblShowMarkings">הצג סימונים</span>
+      </label>
+    </div>
     <div id="zoomControls">
       <button id="btnZoomIn" title="Zoom In" data-i18n-title="zoomIn">+</button>
       <button id="btnZoomOut" title="Zoom Out" data-i18n-title="zoomOut">−</button>

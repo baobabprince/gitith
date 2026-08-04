@@ -389,87 +389,7 @@
       grid-template-rows: auto 1fr;
     }
     header {
-      flex-direction: row;
-      justify-content: space-between;
-      height: 52px;
-      padding: 0 16px;
-      align-items: center;
-      text-align: start;
-    }
-    header div {
-      align-items: flex-start;
-    }
-    header .sub {
       display: none !important;
-    }
-
-    .header-controls {
-      position: fixed;
-      top: 0;
-      right: -300px;
-      width: 260px;
-      height: 100vh;
-      background: var(--panel);
-      border-left: 1px solid var(--line);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 20px;
-      padding: 60px 20px;
-      z-index: 10002;
-      transition: right 0.3s ease;
-      box-shadow: -5px 0 15px rgba(0,0,0,0.5);
-    }
-    html[dir="rtl"] .header-controls {
-      right: auto;
-      left: -300px;
-      border-left: none;
-      border-right: 1px solid var(--line);
-      box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-      transition: left 0.3s ease;
-    }
-    .header-controls.open {
-      right: 0;
-    }
-    html[dir="rtl"] .header-controls.open {
-      right: auto;
-      left: 0;
-    }
-    .hamburger-btn {
-      display: block;
-      background: var(--panel2);
-      border: 1px solid var(--line);
-      color: var(--green);
-      font-size: 18px;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .close-drawer-btn {
-      display: block;
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      font-size: 20px;
-      cursor: pointer;
-    }
-    html[dir="rtl"] .close-drawer-btn {
-      right: auto;
-      left: 15px;
-    }
-    .drawer-backdrop.open {
-      display: block;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.6);
-      z-index: 10001;
     }
 
     #mobileTabs {
@@ -505,7 +425,7 @@
       border-bottom: none;
     }
 
-    #left, #center, #right {
+    #left, #right {
       display: none !important;
       width: 100% !important;
       height: auto !important;
@@ -515,11 +435,22 @@
       overflow-y: auto !important;
     }
 
+    #center {
+      display: none !important;
+      width: 100% !important;
+      height: 100% !important;
+      flex: 1 1 auto !important;
+      border: none !important;
+      padding: 12px !important;
+      overflow: hidden !important;
+    }
+
     /* Active Mobile Tabs */
     #app.tab-images #left {
       display: block !important;
     }
     #app.tab-images #left #blockImages { display: block !important; }
+    #app.tab-images #left #blockMetaControls { display: block !important; }
     #app.tab-images #left #blockBinarization,
     #app.tab-images #left #blockJunctionGraph,
     #app.tab-images #left #blockOpenEdges,
@@ -532,6 +463,7 @@
     #app.tab-settings #left #blockJunctionGraph,
     #app.tab-settings #left #blockOpenEdges { display: block !important; }
     #app.tab-settings #left #blockImages,
+    #app.tab-settings #left #blockMetaControls,
     #app.tab-settings #left #blockManualEdit { display: none !important; }
 
     #app.tab-edit #left {
@@ -545,7 +477,8 @@
     #app.tab-edit #left #blockImages,
     #app.tab-edit #left #blockBinarization,
     #app.tab-edit #left #blockJunctionGraph,
-    #app.tab-edit #left #blockOpenEdges { display: none !important; }
+    #app.tab-edit #left #blockOpenEdges,
+    #app.tab-edit #left #blockMetaControls { display: none !important; }
 
     #app.tab-edit #center {
       display: flex !important;

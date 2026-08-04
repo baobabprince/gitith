@@ -13,19 +13,7 @@
       <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
       <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
     </div>
-    <button id="btnHamburger" class="hamburger-btn">☰</button>
-    <div id="headerControls" class="header-controls">
-      <button id="btnCloseDrawer" class="close-drawer-btn">✕</button>
-      <button id="btnStartTour" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; border-color:var(--green-dim); color:var(--green);" data-i18n="tourBtn">מדריך סיור 🧭</button>
-      <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" data-i18n="githubLink">GitHub</a>
-      <div class="lang-switcher">
-        <button id="langHe" onclick="changeLang('he')">עברית</button>
-        <button id="langEn" onclick="changeLang('en')">English</button>
-        <button id="langAr" onclick="changeLang('ar')">العربية</button>
-      </div>
-    </div>
   </header>
-  <div id="drawerBackdrop" class="drawer-backdrop"></div>
 
   <!-- Mobile Tab Navigation -->
   <nav id="mobileTabs">
@@ -271,6 +259,19 @@
       </div>
       <div class="hint" id="modeHint" data-i18n="hintSelect">
         מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.
+      </div>
+    </div>
+
+    <!-- Side Menu / Meta Controls (Tour, GitHub, Languages) -->
+    <div class="block" id="blockMetaControls" style="border-top:1px solid var(--line); padding-top:12px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btnStartTour" style="display:inline-flex; align-items:center; justify-content:center; gap:4px; font-weight:600; border-color:var(--green-dim); color:var(--green); width:100%;" data-i18n="tourBtn">מדריך סיור 🧭</button>
+        <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" style="display:flex; align-items:center; justify-content:center; width:100%; text-decoration:none;" data-i18n="githubLink">GitHub</a>
+        <div class="lang-switcher" style="display:flex; width:100%; gap:4px;">
+          <button id="langHe" style="flex:1;" onclick="changeLang('he')">עברית</button>
+          <button id="langEn" style="flex:1;" onclick="changeLang('en')">English</button>
+          <button id="langAr" style="flex:1;" onclick="changeLang('ar')">العربية</button>
+        </div>
       </div>
     </div>
   </div>

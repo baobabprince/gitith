@@ -157,8 +157,8 @@ const els = {
   btnLoadModels: document.getElementById('btnLoadModels'),
   geminiModel: document.getElementById('geminiModel'),
   btnDetectGemini: document.getElementById('btnDetectGemini'),
-  btnPreviewBin: document.getElementById('btnPreviewBin'),
-  btnToggleOverlay: document.getElementById('btnToggleOverlay'),
+  switchShowBinary: document.getElementById('switchShowBinary'),
+  switchShowMarkings: document.getElementById('switchShowMarkings'),
   btnDetect: document.getElementById('btnDetect'),
   base: document.getElementById('base'),
   overlay: document.getElementById('overlay'),
@@ -284,9 +284,6 @@ function setMobileTab(tabId) {
     app.classList.add('tab-results');
     document.getElementById('tabMobResults').classList.add('active');
   }
-
-  // Close the mobile drawer when changing tabs
-  closeMobileDrawer();
 
   // Defer resetZoomPan so the #center container renders fully with its true dimensions first.
   if (tabId === 'view' || tabId === 'edit') {
@@ -495,8 +492,8 @@ function deleteImage(id) {
       els.holeSize.disabled = true;
       els.removeIslands.disabled = true;
       els.islandSize.disabled = true;
-      els.btnPreviewBin.disabled = true;
-      els.btnToggleOverlay.disabled = true;
+      els.switchShowBinary.disabled = true;
+      els.switchShowMarkings.disabled = true;
       els.btnDetect.disabled = true;
       els.mergeDist.disabled = true;
       els.spurLenSlider.disabled = true;
@@ -560,13 +557,15 @@ function setActiveImage(id){
   els.holeSize.disabled = !rec.fillHoles;
   els.removeIslands.disabled = false;
   els.islandSize.disabled = !rec.removeIslands;
-  els.btnPreviewBin.disabled = false;
-  els.btnToggleOverlay.disabled = false;
+  els.switchShowBinary.disabled = false;
+  els.switchShowMarkings.disabled = false;
   els.btnDetect.disabled = false;
   els.mergeDist.disabled = false;
   els.spurLenSlider.disabled = false;
 
   // Sync state values to UI controls
+  els.switchShowBinary.checked = state.showBinary;
+  els.switchShowMarkings.checked = !state.hideAllMarks;
   els.binMethod.value = rec.binMethod;
   els.threshold.value = rec.threshold;
   els.thVal.textContent = rec.threshold;
@@ -687,27 +686,23 @@ els.spurLenSlider.addEventListener('input', ()=>{
   rec.spurLen = parseInt(els.spurLenSlider.value,10);
   els.spurLenVal.textContent = rec.spurLen;
 });
-els.btnPreviewBin.addEventListener('click', ()=>{
+els.switchShowBinary.addEventListener('change', ()=>{
   const rec = activeImg(); if(!rec) return;
-  state.showBinary = !state.showBinary;
+  state.showBinary = els.switchShowBinary.checked;
   if(state.showBinary){
-    els.btnPreviewBin.classList.add('active-mode');
     log(getI18nStr('logPreviewBinOn'));
   } else {
-    els.btnPreviewBin.classList.remove('active-mode');
     log(getI18nStr('logPreviewBinOff'));
   }
   drawOverlay();
 });
 
-els.btnToggleOverlay.addEventListener('click', ()=>{
+els.switchShowMarkings.addEventListener('change', ()=>{
   const rec = activeImg(); if(!rec) return;
-  state.hideAllMarks = !state.hideAllMarks;
+  state.hideAllMarks = !els.switchShowMarkings.checked;
   if(state.hideAllMarks){
-    els.btnToggleOverlay.classList.add('active-mode');
     log(getI18nStr('logToggleOverlayOn'));
   } else {
-    els.btnToggleOverlay.classList.remove('active-mode');
     log(getI18nStr('logToggleOverlayOff'));
   }
   drawOverlay();
@@ -2569,63 +2564,8 @@ function zoomAtPoint(clientX, clientY, factor) {
   applyTransform();
 }
 
-/* ===================== Mobile Drawer Controls ===================== */
-function openMobileDrawer() {
-  const controls = document.getElementById('headerControls');
-  const backdrop = document.getElementById('drawerBackdrop');
-  if (controls) controls.classList.add('open');
-  if (backdrop) backdrop.classList.add('open');
-}
-
-function closeMobileDrawer() {
-  const controls = document.getElementById('headerControls');
-  const backdrop = document.getElementById('drawerBackdrop');
-  if (controls) controls.classList.remove('open');
-  if (backdrop) backdrop.classList.remove('open');
-}
-
-function initMobileDrawer() {
-  const btnHamburger = document.getElementById('btnHamburger');
-  const btnCloseDrawer = document.getElementById('btnCloseDrawer');
-  const drawerBackdrop = document.getElementById('drawerBackdrop');
-
-  if (btnHamburger) {
-    btnHamburger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openMobileDrawer();
-    });
-  }
-  if (btnCloseDrawer) {
-    btnCloseDrawer.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeMobileDrawer();
-    });
-  }
-  if (drawerBackdrop) {
-    drawerBackdrop.addEventListener('click', () => {
-      closeMobileDrawer();
-    });
-  }
-
-  // Close drawer when any action inside is clicked
-  const langButtons = document.querySelectorAll('.lang-switcher button');
-  langButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      closeMobileDrawer();
-    });
-  });
-
-  const btnStartTour = document.getElementById('btnStartTour');
-  if (btnStartTour) {
-    btnStartTour.addEventListener('click', () => {
-      closeMobileDrawer();
-    });
-  }
-}
-
 /* ===================== init ===================== */
 initZoomPanEvents();
-initMobileDrawer();
 applyTranslations(currentLang);
 log(getI18nStr('logReady'));
 

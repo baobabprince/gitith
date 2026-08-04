@@ -284,6 +284,16 @@ function setMobileTab(tabId) {
     app.classList.add('tab-results');
     document.getElementById('tabMobResults').classList.add('active');
   }
+
+  // Close the mobile drawer when changing tabs
+  closeMobileDrawer();
+
+  // Defer resetZoomPan so the #center container renders fully with its true dimensions first.
+  if (tabId === 'view' || tabId === 'edit') {
+    setTimeout(() => {
+      resetZoomPan();
+    }, 50);
+  }
 }
 
 // Bind mobile tab events
@@ -2559,8 +2569,63 @@ function zoomAtPoint(clientX, clientY, factor) {
   applyTransform();
 }
 
+/* ===================== Mobile Drawer Controls ===================== */
+function openMobileDrawer() {
+  const controls = document.getElementById('headerControls');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (controls) controls.classList.add('open');
+  if (backdrop) backdrop.classList.add('open');
+}
+
+function closeMobileDrawer() {
+  const controls = document.getElementById('headerControls');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (controls) controls.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
+}
+
+function initMobileDrawer() {
+  const btnHamburger = document.getElementById('btnHamburger');
+  const btnCloseDrawer = document.getElementById('btnCloseDrawer');
+  const drawerBackdrop = document.getElementById('drawerBackdrop');
+
+  if (btnHamburger) {
+    btnHamburger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMobileDrawer();
+    });
+  }
+  if (btnCloseDrawer) {
+    btnCloseDrawer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMobileDrawer();
+    });
+  }
+  if (drawerBackdrop) {
+    drawerBackdrop.addEventListener('click', () => {
+      closeMobileDrawer();
+    });
+  }
+
+  // Close drawer when any action inside is clicked
+  const langButtons = document.querySelectorAll('.lang-switcher button');
+  langButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeMobileDrawer();
+    });
+  });
+
+  const btnStartTour = document.getElementById('btnStartTour');
+  if (btnStartTour) {
+    btnStartTour.addEventListener('click', () => {
+      closeMobileDrawer();
+    });
+  }
+}
+
 /* ===================== init ===================== */
 initZoomPanEvents();
+initMobileDrawer();
 applyTranslations(currentLang);
 log(getI18nStr('logReady'));
 

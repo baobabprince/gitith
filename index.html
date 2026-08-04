@@ -13,7 +13,9 @@
       <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
       <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
     </div>
-    <div style="display:flex; align-items:center; gap:12px;">
+    <button id="btnHamburger" class="hamburger-btn">☰</button>
+    <div id="headerControls" class="header-controls">
+      <button id="btnCloseDrawer" class="close-drawer-btn">✕</button>
       <button id="btnStartTour" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; border-color:var(--green-dim); color:var(--green);" data-i18n="tourBtn">מדריך סיור 🧭</button>
       <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" data-i18n="githubLink">GitHub</a>
       <div class="lang-switcher">
@@ -23,6 +25,7 @@
       </div>
     </div>
   </header>
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
 
   <!-- Mobile Tab Navigation -->
   <nav id="mobileTabs">

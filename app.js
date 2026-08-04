@@ -2250,12 +2250,18 @@ const tourState = {
       elementId: 'btnLoadExample',
       titleKey: 'tourTitle1',
       descKey: 'tourDesc1',
-      position: 'bottom-center' // Positions relative to the highlighted element
+      position: 'bottom-center'
     },
     {
       elementId: 'binMethod',
       titleKey: 'tourTitle2',
       descKey: 'tourDesc2',
+      position: 'bottom-center'
+    },
+    {
+      elementId: 'spurLenSlider',
+      titleKey: 'tourTitleSkel',
+      descKey: 'tourDescSkel',
       position: 'bottom-center'
     },
     {

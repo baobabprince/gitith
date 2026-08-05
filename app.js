@@ -2273,7 +2273,14 @@ function updateStatsPanel(){
 function renderEdgeTable(){
   const rec = activeImg();
   els.edgeTableBody.innerHTML='';
-  if(!rec) return;
+  const countEl = document.getElementById('lblEdgeTableCount');
+  if(!rec) {
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+  if (countEl) {
+    countEl.textContent = ` (N=${rec.edges.length})`;
+  }
   rec.edges.forEach((e,i)=>{
     if (e.includeInStats === undefined) {
       e.includeInStats = !e.incomplete;

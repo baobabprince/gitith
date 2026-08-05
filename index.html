@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TJ Undulation Analyzer — ניתוח פיתולי צמתי הדוקים</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='64' height='64'%3E%3Cpath d='M32 32 L32 4 A28 28 0 0 0 8 48 Z' fill='%230d2417' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 32 L56 48 A28 28 0 0 0 32 4' fill='%230b1d12' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 32 L8 48 A28 28 0 0 0 56 48 Z' fill='%2311301e' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 6 L32 32 L10 46 M32 32 L54 46' fill='none' stroke='%2339ff9e' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23ffd54a' stroke='%23ffffff' stroke-width='1.5'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ffffff' opacity='0.8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,6 +13,16 @@
     <div style="display:flex; flex-direction:column; gap:2px;">
       <h1 id="title" data-i18n="title">TJ Undulation <span>Analyzer</span></h1>
       <div id="sub" class="sub" data-i18n="sub">כימות פיתולי צמתים ודפנות תא (צביעות דפנות כגון ZO-1 וכדומה) — יחס אורך דופן בפועל / מרחק בין צמתים תלת-תאיים</div>
+    </div>
+    <!-- Desktop Header Controls (Visible only on desktop screens) -->
+    <div id="headerMetaControls" class="header-controls">
+      <button id="btnStartTourHeader" class="header-tour-btn" data-i18n="tourBtn">מדריך סיור 🧭</button>
+      <a href="https://github.com/baobabprince/gitith" target="_blank" class="github-link" data-i18n="githubLink">GitHub</a>
+      <div class="lang-switcher">
+        <button id="langHeHeader" class="header-lang-btn" onclick="changeLang('he')">עברית</button>
+        <button id="langEnHeader" class="header-lang-btn" onclick="changeLang('en')">English</button>
+        <button id="langArHeader" class="header-lang-btn" onclick="changeLang('ar')">العربية</button>
+      </div>
     </div>
   </header>
 

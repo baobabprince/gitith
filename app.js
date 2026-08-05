@@ -19,6 +19,14 @@ function applyTranslations(lang) {
   document.getElementById('langEn').className = lang === 'en' ? 'active-lang' : '';
   document.getElementById('langAr').className = lang === 'ar' ? 'active-lang' : '';
 
+  // Update active style in desktop header switcher
+  const langHeHeader = document.getElementById('langHeHeader');
+  const langEnHeader = document.getElementById('langEnHeader');
+  const langArHeader = document.getElementById('langArHeader');
+  if (langHeHeader) langHeHeader.className = lang === 'he' ? 'header-lang-btn active-lang' : 'header-lang-btn';
+  if (langEnHeader) langEnHeader.className = lang === 'en' ? 'header-lang-btn active-lang' : 'header-lang-btn';
+  if (langArHeader) langArHeader.className = lang === 'ar' ? 'header-lang-btn active-lang' : 'header-lang-btn';
+
   // Update static text elements
   const dict = translations[lang];
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -366,7 +374,6 @@ function loadFile(file){
     log(getI18nStr('logLoaded', {name: file.name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
-    setMobileTab('view');
   };
   img.src = url;
 }
@@ -414,7 +421,6 @@ function loadImageFromUrl(url, name){
     log(getI18nStr('logLoaded', {name: name, w, h}));
     refreshImgList();
     setActiveImage(rec.id);
-    setMobileTab('view');
   };
   img.src = url;
 }
@@ -2557,6 +2563,10 @@ function positionTourElements(target, placement) {
 
 // Bind tour UI controls
 document.getElementById('btnStartTour').onclick = startTour;
+const btnStartTourHeader = document.getElementById('btnStartTourHeader');
+if (btnStartTourHeader) {
+  btnStartTourHeader.onclick = startTour;
+}
 document.getElementById('tourSkipBtn').onclick = endTour;
 document.getElementById('tourPrevBtn').onclick = () => {
   if (tourState.currentStep > 0) {

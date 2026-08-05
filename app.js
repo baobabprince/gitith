@@ -198,6 +198,7 @@ const els = {
   dropHint: document.getElementById('dropHint'),
   statNodes: document.getElementById('statNodes'),
   statEdges: document.getElementById('statEdges'),
+  edgeCountLabel: document.getElementById('edgeCountLabel'),
   statAvg: document.getElementById('statAvg'),
   statStd: document.getElementById('statStd'),
   edgeTableBody: document.getElementById('edgeTableBody'),
@@ -2249,6 +2250,7 @@ function drawOverlay(){
 function updateStatsPanel(){
   const rec = activeImg();
   if(!rec){ els.statNodes.textContent='0'; els.statEdges.textContent='0';
+    if(els.edgeCountLabel) els.edgeCountLabel.textContent='(N=0)';
     els.statAvg.textContent='—'; els.statStd.textContent='—'; return; }
 
   const valid = rec.edges.filter(e => {
@@ -2260,6 +2262,7 @@ function updateStatsPanel(){
 
   els.statNodes.textContent = rec.nodes.length;
   els.statEdges.textContent = rec.edges.length;
+  if(els.edgeCountLabel) els.edgeCountLabel.textContent=`(N=${rec.edges.length})`;
   if(valid.length){
     const avg = valid.reduce((s,e)=>s+e.ratio,0)/valid.length;
     const variance = valid.reduce((s,e)=>s+(e.ratio-avg)**2,0)/valid.length;

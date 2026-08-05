@@ -980,19 +980,6 @@ function removeSmallIslands(bin, w, h, maxIslandSize) {
   }
 }
 
-let samModel = null;
-let samProcessor = null;
-
-async function ensureSamLoaded() {
-  if (samModel && samProcessor) return;
-  log(getI18nStr('logLoadingSam'));
-  const { SamModel, AutoProcessor, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js');
-  env.allowLocalModels = false;
-  samModel = await SamModel.from_pretrained('Xenova/slimsam-77-uniform');
-  samProcessor = await AutoProcessor.from_pretrained('Xenova/slimsam-77-uniform');
-  log(getI18nStr('logSamLoaded'));
-}
-
 /* ===================== MicroSAM Enhanced ===================== */
 
 const SAM_CONFIG = {

@@ -77,6 +77,12 @@ function applyTranslations(lang) {
     if (rec.samThreshold !== undefined) {
       els.samThresholdVal.textContent = rec.samThreshold.toFixed(1);
     }
+    if (rec.sigmaMin !== undefined) {
+      els.sigmaMinVal.textContent = rec.sigmaMin.toFixed(1);
+    }
+    if (rec.sigmaMax !== undefined) {
+      els.sigmaMaxVal.textContent = rec.sigmaMax.toFixed(1);
+    }
   } else {
     // Refresh Gemini select placeholder when no models loaded
     if (els.geminiModel.disabled) {
@@ -118,6 +124,8 @@ const state = {
   redraw: {active:false, points:[]},
   showBinary: false,
   hideAllMarks: false,
+  pyodideLoading: false,
+  pyodideProcessing: false,
 };
 
 // Global Zoom & Pan State
@@ -141,6 +149,11 @@ const els = {
   btnLoadExample: document.getElementById('btnLoadExample'),
   imgList: document.getElementById('imgList'),
   binMethod: document.getElementById('binMethod'),
+  panelSigmas: document.getElementById('panelSigmas'),
+  sigmaMin: document.getElementById('sigmaMin'),
+  sigmaMinVal: document.getElementById('sigmaMinVal'),
+  sigmaMax: document.getElementById('sigmaMax'),
+  sigmaMaxVal: document.getElementById('sigmaMaxVal'),
   panelMicroSam: document.getElementById('panelMicroSam'),
   samGridSize: document.getElementById('samGridSize'),
   samGridSizeVal: document.getElementById('samGridSizeVal'),
@@ -367,6 +380,8 @@ function loadFile(file){
       islandSize: 100,
       samGridSize: 10,
       samThreshold: 0.0,
+      sigmaMin: 1.0,
+      sigmaMax: 4.0,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -415,6 +430,8 @@ function loadImageFromUrl(url, name){
       islandSize: 100,
       samGridSize: 10,
       samThreshold: 0.0,
+      sigmaMin: 1.0,
+      sigmaMax: 4.0,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -585,6 +602,8 @@ function setActiveImage(id){
   els.btnDetect.disabled = false;
   els.mergeDist.disabled = false;
   els.spurLenSlider.disabled = false;
+  els.sigmaMin.disabled = false;
+  els.sigmaMax.disabled = false;
 
   // Sync state values to UI controls
   els.switchShowBinary.checked = state.showBinary;
@@ -612,21 +631,16 @@ function setActiveImage(id){
   els.mergeVal.textContent = rec.mergeDist;
   els.spurLenSlider.value = rec.spurLen;
   els.spurLenVal.textContent = rec.spurLen;
+  els.sigmaMin.value = rec.sigmaMin !== undefined ? rec.sigmaMin : 1.0;
+  els.sigmaMinVal.textContent = (rec.sigmaMin !== undefined ? rec.sigmaMin : 1.0).toFixed(1);
+  els.sigmaMax.value = rec.sigmaMax !== undefined ? rec.sigmaMax : 4.0;
+  els.sigmaMaxVal.textContent = (rec.sigmaMax !== undefined ? rec.sigmaMax : 4.0).toFixed(1);
 
   // Show/hide appropriate panels based on selected binarization method
-  if (rec.binMethod === 'adaptive') {
-    els.panelAdaptive.style.display = '';
-    els.panelGlobal.style.display = 'none';
-    els.panelMicroSam.style.display = 'none';
-  } else if (rec.binMethod === 'global') {
-    els.panelAdaptive.style.display = 'none';
-    els.panelGlobal.style.display = '';
-    els.panelMicroSam.style.display = 'none';
-  } else {
-    els.panelAdaptive.style.display = 'none';
-    els.panelGlobal.style.display = 'none';
-    els.panelMicroSam.style.display = '';
-  }
+  els.panelSigmas.style.display = (rec.binMethod === 'frangi' || rec.binMethod === 'meijering') ? '' : 'none';
+  els.panelAdaptive.style.display = (rec.binMethod === 'adaptive' || rec.binMethod === 'frangi' || rec.binMethod === 'meijering') ? '' : 'none';
+  els.panelGlobal.style.display = (rec.binMethod === 'global') ? '' : 'none';
+  els.panelMicroSam.style.display = (rec.binMethod === 'microsam') ? '' : 'none';
 
   els.btnDetectGemini.disabled = !(els.geminiKey.value && els.geminiModel.value);
   drawOverlay();
@@ -635,24 +649,41 @@ function setActiveImage(id){
 }
 
 /* ===================== Preprocessing & Threshold Controls ===================== */
+async function onSigmasChanged() {
+  const rec = activeImg(); if(!rec) return;
+  if (state.showBinary) {
+    await binarize(rec);
+    drawOverlay();
+  }
+}
+
 els.binMethod.addEventListener('change', () => {
   const rec = activeImg(); if(!rec) return;
   rec.binMethod = els.binMethod.value;
-  if (rec.binMethod === 'adaptive') {
-    els.panelAdaptive.style.display = '';
-    els.panelGlobal.style.display = 'none';
-    els.panelMicroSam.style.display = 'none';
-  } else if (rec.binMethod === 'global') {
-    els.panelAdaptive.style.display = 'none';
-    els.panelGlobal.style.display = '';
-    els.panelMicroSam.style.display = 'none';
+  els.panelSigmas.style.display = (rec.binMethod === 'frangi' || rec.binMethod === 'meijering') ? '' : 'none';
+  els.panelAdaptive.style.display = (rec.binMethod === 'adaptive' || rec.binMethod === 'frangi' || rec.binMethod === 'meijering') ? '' : 'none';
+  els.panelGlobal.style.display = (rec.binMethod === 'global') ? '' : 'none';
+  els.panelMicroSam.style.display = (rec.binMethod === 'microsam') ? '' : 'none';
+  if (state.showBinary && (rec.binMethod === 'frangi' || rec.binMethod === 'meijering')) {
+    onSigmasChanged();
   } else {
-    els.panelAdaptive.style.display = 'none';
-    els.panelGlobal.style.display = 'none';
-    els.panelMicroSam.style.display = '';
+    drawOverlay();
   }
-  drawOverlay();
 });
+
+els.sigmaMin.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.sigmaMin = parseFloat(els.sigmaMin.value);
+  els.sigmaMinVal.textContent = rec.sigmaMin.toFixed(1);
+});
+els.sigmaMin.addEventListener('change', onSigmasChanged);
+
+els.sigmaMax.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.sigmaMax = parseFloat(els.sigmaMax.value);
+  els.sigmaMaxVal.textContent = rec.sigmaMax.toFixed(1);
+});
+els.sigmaMax.addEventListener('change', onSigmasChanged);
 
 els.samGridSize.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
@@ -671,48 +702,56 @@ els.threshold.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.threshold = parseInt(els.threshold.value, 10);
   els.thVal.textContent = rec.threshold;
+  if (state.showBinary) drawOverlay();
 });
 
 els.adaptSize.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.adaptSize = parseInt(els.adaptSize.value, 10);
   els.adaptSizeVal.textContent = rec.adaptSize;
+  if (state.showBinary) drawOverlay();
 });
 
 els.adaptC.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.adaptC = parseInt(els.adaptC.value, 10);
   els.adaptCVal.textContent = rec.adaptC;
+  if (state.showBinary) drawOverlay();
 });
 
 els.adaptMinTh.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.adaptMinTh = parseInt(els.adaptMinTh.value, 10);
   els.adaptMinThVal.textContent = rec.adaptMinTh;
+  if (state.showBinary) drawOverlay();
 });
 
 els.fillHoles.addEventListener('change', () => {
   const rec = activeImg(); if(!rec) return;
   rec.fillHoles = els.fillHoles.checked;
   els.holeSize.disabled = !rec.fillHoles;
+  if (state.showBinary) drawOverlay();
 });
 
 els.holeSize.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.holeSize = parseInt(els.holeSize.value, 10);
   els.holeSizeVal.textContent = rec.holeSize;
+  if (state.showBinary) drawOverlay();
 });
 
 els.removeIslands.addEventListener('change', () => {
   const rec = activeImg(); if(!rec) return;
   rec.removeIslands = els.removeIslands.checked;
   els.islandSize.disabled = !rec.removeIslands;
+  if (state.showBinary) drawOverlay();
 });
 
 els.islandSize.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.islandSize = parseInt(els.islandSize.value, 10);
   els.islandSizeVal.textContent = rec.islandSize;
+  if (state.showBinary) drawOverlay();
 });
 
 /* ===================== Node & Graph Controls ===================== */
@@ -747,7 +786,11 @@ els.switchShowBinary.addEventListener('change', ()=>{
   } else {
     log(getI18nStr('logPreviewBinOff'));
   }
-  drawOverlay();
+  if (state.showBinary && (rec.binMethod === 'frangi' || rec.binMethod === 'meijering')) {
+    onSigmasChanged();
+  } else {
+    drawOverlay();
+  }
 });
 
 els.switchShowMarkings.addEventListener('change', ()=>{
@@ -1071,15 +1114,148 @@ async function runMicroSamAsync(rec) {
   }
 }
 
+let pyodideInstance = null;
+let isPyodideLoading = false;
+
+async function ensurePyodideLoaded() {
+  if (pyodideInstance) return pyodideInstance;
+  if (isPyodideLoading) {
+    while (isPyodideLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return pyodideInstance;
+  }
+  isPyodideLoading = true;
+  log(getI18nStr('logLoadingPyodide'));
+  state.pyodideLoading = true;
+  drawOverlay();
+
+  try {
+    pyodideInstance = await loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.1/full/"
+    });
+    log(getI18nStr('logPyodideLoadingPackages'));
+    await pyodideInstance.loadPackage(["numpy", "scipy", "scikit-image"]);
+    log(getI18nStr('logPyodideLoaded'));
+  } catch (err) {
+    log(`<span style="color:#ff6b6b">Error loading Pyodide: ${err.message}</span>`);
+    console.error(err);
+    pyodideInstance = null;
+  } finally {
+    isPyodideLoading = false;
+    state.pyodideLoading = false;
+    drawOverlay();
+  }
+  return pyodideInstance;
+}
+
+async function runPyodideFilterAsync(rec) {
+  if (state.pyodideProcessing) return;
+  state.pyodideProcessing = true;
+  drawOverlay();
+
+  try {
+    const pyodide = await ensurePyodideLoaded();
+    if (!pyodide) {
+      throw new Error("Could not initialize Python environment.");
+    }
+
+    const filterName = rec.binMethod; // "frangi" or "meijering"
+    log(getI18nStr('logPyodideRunning', {filterName: filterName.toUpperCase()}));
+
+    // Extract green channel to Uint8Array
+    const w = rec.width, h = rec.height;
+    const greenArr = new Uint8Array(w * h);
+    const d = rec.imgData.data;
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      greenArr[p] = d[i + 1]; // green channel
+    }
+
+    // Set variables in Python global scope
+    pyodide.globals.set("js_green_channel", greenArr);
+    pyodide.globals.set("width", w);
+    pyodide.globals.set("height", h);
+    pyodide.globals.set("sigma_min", rec.sigmaMin);
+    pyodide.globals.set("sigma_max", rec.sigmaMax);
+    pyodide.globals.set("filter_name", filterName);
+
+    // Run the Python script
+    const pythonScript = `
+import numpy as np
+from skimage.filters import frangi, meijering
+
+# Convert TypedArray to numpy array
+img_np = np.array(js_green_channel, dtype=np.float32).reshape((height, width))
+
+# Construct sigmas list
+if sigma_min >= sigma_max:
+    sigmas_list = [sigma_min]
+else:
+    # Use 0.5 step
+    sigmas_list = list(np.arange(sigma_min, sigma_max + 0.05, 0.5))
+
+# Run the selected skimage filter with black_ridges=False
+if filter_name == 'frangi':
+    filtered = frangi(img_np, sigmas=sigmas_list, black_ridges=False)
+else:
+    filtered = meijering(img_np, sigmas=sigmas_list, black_ridges=False)
+
+# Normalize the float result to 0-255 grayscale
+f_min = filtered.min()
+f_max = filtered.max()
+if f_max > f_min:
+    normalized = (filtered - f_min) / (f_max - f_min) * 255.0
+else:
+    normalized = filtered * 0.0
+
+result = normalized.astype(np.uint8).flatten()
+`;
+
+    await pyodide.runPythonAsync(pythonScript);
+
+    // Retrieve result back to JS
+    const pyResult = pyodide.globals.get('result');
+    const filteredData = pyResult.toJs();
+    pyResult.destroy();
+
+    // Save to cache
+    rec.filteredGrayscale = filteredData;
+    rec.filteredMethod = filterName;
+    rec.filteredSigmaMin = rec.sigmaMin;
+    rec.filteredSigmaMax = rec.sigmaMax;
+
+    log(getI18nStr('logPyodideComplete', {filterName: filterName.toUpperCase()}));
+  } catch (err) {
+    log(`<span style="color:#ff6b6b">Python Error: ${err.message}</span>`);
+    console.error(err);
+  } finally {
+    state.pyodideProcessing = false;
+    drawOverlay();
+  }
+}
+
 function binarizeSync(rec) {
   if (rec.binMethod === 'microsam') {
     return rec.microsamBinary || new Uint8Array(rec.width * rec.height);
   }
   const w = rec.width, h = rec.height;
-  const g = smoothGreen(rec.imgData);
+
+  // Choose input source for binarization: either the Pyodide filtered grayscale or smoothed green channel
+  let g;
+  if ((rec.binMethod === 'frangi' || rec.binMethod === 'meijering') && rec.filteredGrayscale) {
+    g = rec.filteredGrayscale;
+  } else {
+    g = smoothGreen(rec.imgData);
+  }
+
   const out = new Uint8Array(w * h);
 
-  if (rec.binMethod === 'adaptive') {
+  if (rec.binMethod === 'global') {
+    for (let p = 0; p < g.length; p++) {
+      out[p] = g[p] >= rec.threshold ? 1 : 0;
+    }
+  } else {
+    // For adaptive, frangi, meijering, use adaptive thresholding
     const integral = computeIntegralImage(g, w, h);
     const S = rec.adaptSize;
     const C = rec.adaptC;
@@ -1099,10 +1275,6 @@ function binarizeSync(rec) {
         const mean = sum / count;
         out[idx] = g[idx] >= (mean - C) ? 1 : 0;
       }
-    }
-  } else {
-    for (let p = 0; p < g.length; p++) {
-      out[p] = g[p] >= rec.threshold ? 1 : 0;
     }
   }
 
@@ -1126,6 +1298,17 @@ async function binarize(rec) {
     await runMicroSamAsync(rec);
     return rec.microsamBinary || new Uint8Array(rec.width * rec.height);
   }
+
+  if (rec.binMethod === 'frangi' || rec.binMethod === 'meijering') {
+    const isCacheValid = rec.filteredGrayscale &&
+                         rec.filteredMethod === rec.binMethod &&
+                         rec.filteredSigmaMin === rec.sigmaMin &&
+                         rec.filteredSigmaMax === rec.sigmaMax;
+    if (!isCacheValid) {
+      await runPyodideFilterAsync(rec);
+    }
+  }
+
   return binarizeSync(rec);
 }
 
@@ -2044,6 +2227,21 @@ function drawOverlay(){
     ovCtx.font = "bold 16px sans-serif";
     ovCtx.textAlign = "center";
     ovCtx.fillText(getI18nStr('logSamProcessing') || "Processing MicroSAM Cell Segmentation...", rec.width / 2, rec.height / 2);
+  } else if (state.pyodideLoading) {
+    ovCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ovCtx.fillRect(0, 0, rec.width, rec.height);
+    ovCtx.fillStyle = "#39ff9e";
+    ovCtx.font = "bold 16px sans-serif";
+    ovCtx.textAlign = "center";
+    ovCtx.fillText(getI18nStr('logLoadingPyodide') || "Loading Python Image Processing Engine...", rec.width / 2, rec.height / 2);
+  } else if (state.pyodideProcessing) {
+    ovCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ovCtx.fillRect(0, 0, rec.width, rec.height);
+    ovCtx.fillStyle = "#39ff9e";
+    ovCtx.font = "bold 16px sans-serif";
+    ovCtx.textAlign = "center";
+    const filterNameDisplay = rec.binMethod ? rec.binMethod.toUpperCase() : "Python";
+    ovCtx.fillText(getI18nStr('logPyodideRunning', {filterName: filterNameDisplay}) || "Running Python Filter...", rec.width / 2, rec.height / 2);
   }
 }
 

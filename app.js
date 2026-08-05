@@ -993,119 +993,219 @@ async function ensureSamLoaded() {
   log(getI18nStr('logSamLoaded'));
 }
 
+/* ===================== MicroSAM Enhanced ===================== */
+
+const SAM_CONFIG = {
+  model: 'Xenova/sam2-hiera-tiny',      // שנה ל-mobile-sam אם צריך
+  processor: 'Xenova/sam2-hiera-tiny',
+  fallbackModel: 'Xenova/slimsam-77-uniform',
+  maxPointsPerBatch: 12,                // נמוך יותר = יציב יותר
+  gradientPeakCount: 64,
+  dedupRadius: 12,
+  useTiling: false,                     // הפעל אם תמונות > 800px
+  tileSize: 512
+};
+
+let samModel = null;
+let samProcessor = null;
+
+async function ensureSamLoaded() {
+  if (samModel && samProcessor) return;
+  log(getI18nStr('logLoadingSam'));
+  
+  const { SamModel, AutoProcessor, env } = await import(
+    'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js'
+  );
+  env.allowLocalModels = false;
+  env.useBrowserCache = true;
+  
+  try {
+    samModel = await SamModel.from_pretrained(SAM_CONFIG.model);
+    samProcessor = await AutoProcessor.from_pretrained(SAM_CONFIG.processor);
+    log(`SAM2 loaded (${SAM_CONFIG.model})`);
+  } catch (err) {
+    log(`SAM2 failed, trying fallback...`);
+    samModel = await SamModel.from_pretrained(SAM_CONFIG.fallbackModel);
+    samProcessor = await AutoProcessor.from_pretrained(SAM_CONFIG.fallbackModel);
+    log(`Fallback SAM loaded`);
+  }
+}
+
+/**
+ * מייצר prompts חכמים: grid + gradient peaks + skeleton hints
+ */
+function generateSmartPrompts(rec) {
+  const w = rec.width, h = rec.height;
+  const points = [];
+  const gridSize = rec.samGridSize || 10;
+  
+  // 1. Grid בסיסי
+  for (let i = 1; i < gridSize; i++) {
+    for (let j = 1; j < gridSize; j++) {
+      points.push({
+        x: Math.round((i / gridSize) * w),
+        y: Math.round((j / gridSize) * h),
+        source: 'grid'
+      });
+    }
+  }
+  
+  // 2. Gradient peaks — מבוסס ערוץ ירוק
+  const d = rec.imgData.data;
+  const green = new Uint8Array(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) green[p] = d[i + 1];
+  
+  // חישוב גרדיאנט בקירוב מהיר (Sobel פשוט)
+  const grad = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      const gx = Math.abs(green[idx + 1] - green[idx - 1]) * 0.5 +
+                 Math.abs(green[idx + 1 - w] - green[idx - 1 - w]) * 0.25 +
+                 Math.abs(green[idx + 1 + w] - green[idx - 1 + w]) * 0.25;
+      const gy = Math.abs(green[idx + w] - green[idx - w]) * 0.5 +
+                 Math.abs(green[idx + w - 1] - green[idx - w - 1]) * 0.25 +
+                 Math.abs(green[idx + w + 1] - green[idx - w + 1]) * 0.25;
+      grad[idx] = gx + gy;
+    }
+  }
+  
+  // חלונות מקומיים למציאת maxima
+  const windowSize = Math.max(10, Math.floor(Math.min(w, h) / 60));
+  const candidates = [];
+  
+  for (let y = windowSize; y < h - windowSize; y += Math.floor(windowSize / 2)) {
+    for (let x = windowSize; x < w - windowSize; x += Math.floor(windowSize / 2)) {
+      let maxVal = 0, maxX = x, maxY = y;
+      for (let dy = -windowSize/2; dy <= windowSize/2; dy++) {
+        for (let dx = -windowSize/2; dx <= windowSize/2; dx++) {
+          const ny = y + dy, nx = x + dx;
+          if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+          const v = grad[Math.floor(ny) * w + Math.floor(nx)];
+          if (v > maxVal) { maxVal = v; maxX = nx; maxY = ny; }
+        }
+      }
+      if (maxVal > 25) {
+        candidates.push({ x: Math.round(maxX), y: Math.round(maxY), score: maxVal });
+      }
+    }
+  }
+  
+  candidates.sort((a, b) => b.score - a.score);
+  const topCandidates = candidates.slice(0, SAM_CONFIG.gradientPeakCount);
+  points.push(...topCandidates.map(c => ({ ...c, source: 'gradient' })));
+  
+  // 3. Deduplication חכם — מרחק אוקלידי + grid hash
+  const unique = [];
+  const spatialGrid = new Map(); // hash -> true
+  
+  for (const p of points) {
+    const gx = Math.floor(p.x / SAM_CONFIG.dedupRadius);
+    const gy = Math.floor(p.y / SAM_CONFIG.dedupRadius);
+    const key = `${gx},${gy}`;
+    
+    // בדוק גם שכנים כדי לא לפספס
+    let tooClose = false;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (spatialGrid.has(`${gx+dx},${gy+dy}`)) {
+          tooClose = true; break;
+        }
+      }
+      if (tooClose) break;
+    }
+    
+    if (!tooClose) {
+      spatialGrid.set(key, true);
+      unique.push([p.x, p.y]);
+    }
+  }
+  
+  return unique;
+}
+
 async function runMicroSamAsync(rec) {
   if (state.samProcessing) return;
   state.samProcessing = true;
   drawOverlay();
+  
   try {
     await ensureSamLoaded();
-    log(getI18nStr('logSamProcessing'));
-
-    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js');
-    const raw_image = RawImage.fromCanvas(els.base);
-
-    const w = rec.width;
-    const h = rec.height;
-    const boundaries = new Uint8Array(w * h);
-
-    // Generate grid points
-    const points = [];
-    const gridSize = rec.samGridSize || 10;
-    for (let i = 1; i < gridSize; i++) {
-      for (let j = 1; j < gridSize; j++) {
-        const px = Math.round((i / gridSize) * w);
-        const py = Math.round((j / gridSize) * h);
-        points.push([px, py]);
-      }
-    }
-
-    log(`MicroSAM: Processing ${points.length} grid prompts...`);
-
-    // Process in batches
-    const batchSize = 16;
-    const samThresholdVal = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
-    for (let start = 0; start < points.length; start += batchSize) {
-      const batchPoints = points.slice(start, start + batchSize);
-      // inputs expected dimensions for input_points: [1, point_batch_size, nb_points_per_image, 2]
-      // point_batch_size = batchPoints.length
-      const inputPointsArr = batchPoints.map(p => [p]);
-      const inputLabelsArr = batchPoints.map(() => [1]);
-
-      const inputs = await samProcessor(raw_image, {
-        input_points: inputPointsArr,
-        input_labels: inputLabelsArr
-      });
-
-      const outputs = await samModel(inputs);
-
-      const masks = await samProcessor.post_process_masks(
-        outputs.pred_masks,
-        inputs.original_sizes,
-        inputs.reshaped_input_sizes,
-        { mask_threshold: samThresholdVal, binarize: true }
-      );
-
-      // masks contains an array of Tensors (length of batch size). Each Tensor has dimensions [1, 3, h, w].
-      // Wait, let's verify if masks is an array of length 1, where the tensor inside has dim [point_batch_size, 3, h, w],
-      // or if it returns an array of length point_batch_size!
-      // In Transformers.js image processor:
-      // "for (let i = 0; i < original_sizes.length; ++i)" -> original_sizes.length is 1 for batch size of 1.
-      // Wait, in our inputs call: "const inputs = await samProcessor(raw_image, ...)"
-      // Here raw_image is a single image, so original_sizes has length 1.
-      // Therefore, post_process_masks returns an array of length 1, i.e., `masks` has length 1!
-      // The single tensor at `masks[0]` has shape [1, point_batch_size, 3, h, w] or similar.
-      // Wait, let's look at post_process_masks code:
-      // "let interpolated_mask = await interpolate_4d(masks[i], ...)" where masks[i] is outputs.pred_masks[i].
-      // Since outputs.pred_masks has dims [1, point_batch_size, 3, 256, 256],
-      // outputs.pred_masks[0] has dims [point_batch_size, 3, 256, 256].
-      // After interpolation and binarization, interpolated_mask has dims [point_batch_size, 3, h, w].
-      // So `masks[0]` has shape [point_batch_size, 3, h, w], and is of type "bool" (Uint8Array).
-      // Let's iterate over each prompt (j from 0 to point_batch_size - 1) in `masks[0]`.
-
-      const tensor = masks[0];
-      const data = tensor.data; // Uint8Array containing 0 or 1
-      const numPrompts = batchPoints.length;
-      const size = w * h;
-
-      for (let j = 0; j < numPrompts; j++) {
-        let bestIdx = 0;
-        let maxScore = -Infinity;
-        if (outputs.iou_scores && outputs.iou_scores.data) {
-          // outputs.iou_scores has shape [1, numPrompts, 3]
-          const baseScoreIdx = j * 3;
-          for (let c = 0; c < 3; c++) {
-            const score = outputs.iou_scores.data[baseScoreIdx + c];
-            if (score > maxScore) {
-              maxScore = score;
-              bestIdx = c;
+    const { RawImage } = await import(
+      'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js'
+    );
+    
+    const w = rec.width, h = rec.height;
+    const fullMask = new Uint8Array(w * h).fill(0);
+    
+    // בחירת אסטרטגיה לפי גודל
+    if (SAM_CONFIG.useTiling && Math.max(w, h) > SAM_CONFIG.tileSize) {
+      log('Using tiled SAM processing...');
+      await runSamTiled(rec, fullMask);
+    } else {
+      const points = generateSmartPrompts(rec);
+      log(`MicroSAM: ${points.length} prompts (${SAM_CONFIG.model})`);
+      
+      const raw_image = RawImage.fromCanvas(els.base);
+      const batchSize = SAM_CONFIG.maxPointsPerBatch;
+      const threshold = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
+      
+      for (let start = 0; start < points.length; start += batchSize) {
+        const batch = points.slice(start, start + batchSize);
+        
+        const inputs = await samProcessor(raw_image, {
+          input_points: batch.map(p => [p]),
+          input_labels: batch.map(() => [1])
+        });
+        
+        const outputs = await samModel(inputs);
+        const masks = await samProcessor.post_process_masks(
+          outputs.pred_masks,
+          inputs.original_sizes,
+          inputs.reshape_input_sizes,
+          { mask_threshold: threshold, binarize: true }
+        );
+        
+        // עיבוד תוצאות
+        const tensor = masks[0];
+        const data = tensor.data;
+        const numPrompts = batch.length;
+        const size = w * h;
+        
+        for (let j = 0; j < numPrompts; j++) {
+          // בחירת המסכה הטובה ביותר לכל prompt
+          let bestMaskIdx = 0;
+          if (outputs.iou_scores?.data) {
+            let bestScore = -Infinity;
+            const base = j * 3;
+            for (let c = 0; c < 3; c++) {
+              const s = outputs.iou_scores.data[base + c];
+              if (s > bestScore) { bestScore = s; bestMaskIdx = c; }
             }
           }
-        }
-
-        // Each prompt has 3 masks. The offset for prompt j, mask bestIdx is:
-        // (j * 3 + bestIdx) * size
-        const maskOffset = (j * 3 + bestIdx) * size;
-
-        for (let y = 1; y < h - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            const idx = y * w + x;
-            if (data[maskOffset + idx] === 1) {
-              if (data[maskOffset + idx - 1] === 0 ||
-                  data[maskOffset + idx + 1] === 0 ||
-                  data[maskOffset + idx - w] === 0 ||
-                  data[maskOffset + idx + w] === 0) {
-                boundaries[idx] = 1;
-              }
-            }
+          
+          const offset = (j * 3 + bestMaskIdx) * size;
+          for (let i = 0; i < size; i++) {
+            if (data[offset + i]) fullMask[i] = 1;
           }
         }
+        
+        // עדכון UI progress
+        log(`MicroSAM: ${Math.min(start + batchSize, points.length)}/${points.length} prompts...`);
       }
     }
-
-    rec.microsamBinary = boundaries;
-    rec.microsamBinaryGridSize = gridSize;
-    rec.microsamBinaryThreshold = samThresholdVal;
+    
+    // Post-process: חילוץ boundaries + thinning
+    const { boundary, skeletonReady } = extractBoundariesFromMask(fullMask, w, h);
+    
+    rec.microsamFullMask = fullMask;
+    rec.microsamBinary = boundary;
+    rec.microsamSkeletonReady = skeletonReady;
+    rec.microsamBinaryGridSize = rec.samGridSize;
+    rec.microsamBinaryThreshold = rec.samThreshold;
+    
     log(getI18nStr('logSamComplete'));
+    
   } catch (err) {
     log(`<span style="color:#ff6b6b">MicroSAM Error: ${err.message}</span>`);
     console.error(err);
@@ -1115,11 +1215,42 @@ async function runMicroSamAsync(rec) {
   }
 }
 
-// --- JS implementations of Frangi and Meijering (approximate) ---
-// These provide a pure-JS fallback/replacement for the Pyodide-based
-// skimage filters. They are approximate but avoid loading Pyodide
-// when only these filters are needed.
-
+function extractBoundariesFromMask(mask, w, h) {
+  const boundary = new Uint8Array(w * h);
+  
+  // Boundary extraction: foreground עם שכן background
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      if (!mask[idx]) continue;
+      if (!mask[idx - 1] || !mask[idx + 1] || !mask[idx - w] || !mask[idx + w]) {
+        boundary[idx] = 1;
+      }
+    }
+  }
+  
+  // ניקוי: הסרת פיקסלים בודדים
+  const cleaned = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      if (!boundary[idx]) continue;
+      let neighbors = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (boundary[(y + dy) * w + (x + dx)]) neighbors++;
+        }
+      }
+      if (neighbors >= 2) cleaned[idx] = 1; // שומר רק אם מחובר לפחות ל-2 שכנים
+    }
+  }
+  
+  // דילול לקו ברוחב 1
+  const skeletonReady = thin(cleaned, w, h);
+  
+  return { boundary: cleaned, skeletonReady };
+}
 function gaussianKernel1D(sigma) {
   const radius = Math.max(1, Math.ceil(sigma * 3));
   const len = radius * 2 + 1;

@@ -1,6 +1,0 @@
-127.0.0.1 - - [05/Aug/2026 10:20:09] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [05/Aug/2026 10:20:09] "GET /vendor/jszip.min.js HTTP/1.1" 200 -
-127.0.0.1 - - [05/Aug/2026 10:20:09] "GET /app.js HTTP/1.1" 200 -
-127.0.0.1 - - [05/Aug/2026 10:20:09] "GET /styles.css HTTP/1.1" 200 -
-127.0.0.1 - - [05/Aug/2026 10:20:09] "GET /translations.js HTTP/1.1" 200 -
-127.0.0.1 - - [05/Aug/2026 10:20:11] "GET /example/ctl+213_green.png HTTP/1.1" 200 -

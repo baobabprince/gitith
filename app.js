@@ -66,6 +66,9 @@ function applyTranslations(lang) {
     if (rec.samGridSize !== undefined) {
       els.samGridSizeVal.textContent = rec.samGridSize;
     }
+    if (rec.samThreshold !== undefined) {
+      els.samThresholdVal.textContent = rec.samThreshold.toFixed(1);
+    }
   } else {
     // Refresh Gemini select placeholder when no models loaded
     if (els.geminiModel.disabled) {
@@ -133,6 +136,8 @@ const els = {
   panelMicroSam: document.getElementById('panelMicroSam'),
   samGridSize: document.getElementById('samGridSize'),
   samGridSizeVal: document.getElementById('samGridSizeVal'),
+  samThreshold: document.getElementById('samThreshold'),
+  samThresholdVal: document.getElementById('samThresholdVal'),
   panelGlobal: document.getElementById('panelGlobal'),
   threshold: document.getElementById('threshold'),
   thVal: document.getElementById('thVal'),
@@ -353,6 +358,7 @@ function loadFile(file){
       removeIslands: true,
       islandSize: 100,
       samGridSize: 10,
+      samThreshold: 0.0,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -401,6 +407,7 @@ function loadImageFromUrl(url, name){
       removeIslands: true,
       islandSize: 100,
       samGridSize: 10,
+      samThreshold: 0.0,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -562,6 +569,7 @@ function setActiveImage(id){
   els.adaptC.disabled = false;
   els.adaptMinTh.disabled = false;
   els.samGridSize.disabled = false;
+  els.samThreshold.disabled = false;
   els.fillHoles.disabled = false;
   els.holeSize.disabled = !rec.fillHoles;
   els.removeIslands.disabled = false;
@@ -586,6 +594,8 @@ function setActiveImage(id){
   els.adaptMinThVal.textContent = rec.adaptMinTh;
   els.samGridSize.value = rec.samGridSize || 10;
   els.samGridSizeVal.textContent = rec.samGridSize || 10;
+  els.samThreshold.value = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
+  els.samThresholdVal.textContent = (rec.samThreshold !== undefined ? rec.samThreshold : 0.0).toFixed(1);
   els.fillHoles.checked = rec.fillHoles;
   els.holeSize.value = rec.holeSize;
   els.holeSizeVal.textContent = rec.holeSize;
@@ -642,6 +652,13 @@ els.samGridSize.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.samGridSize = parseInt(els.samGridSize.value, 10);
   els.samGridSizeVal.textContent = rec.samGridSize;
+});
+
+els.samThreshold.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.samThreshold = parseFloat(els.samThreshold.value);
+  els.samThresholdVal.textContent = rec.samThreshold.toFixed(1);
+  drawOverlay();
 });
 
 els.threshold.addEventListener('input', () => {
@@ -956,8 +973,11 @@ async function runMicroSamAsync(rec) {
 
     // Process in batches
     const batchSize = 16;
+    const samThresholdVal = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
     for (let start = 0; start < points.length; start += batchSize) {
       const batchPoints = points.slice(start, start + batchSize);
+      // inputs expected dimensions for input_points: [1, point_batch_size, nb_points_per_image, 2]
+      // point_batch_size = batchPoints.length
       const inputPointsArr = batchPoints.map(p => [p]);
       const inputLabelsArr = batchPoints.map(() => [1]);
 
@@ -971,18 +991,38 @@ async function runMicroSamAsync(rec) {
       const masks = await samProcessor.post_process_masks(
         outputs.pred_masks,
         inputs.original_sizes,
-        inputs.reshaped_input_sizes
+        inputs.reshaped_input_sizes,
+        { mask_threshold: samThresholdVal, binarize: true }
       );
 
-      for (let i = 0; i < masks.length; i++) {
-        const tensor = masks[i];
-        const data = tensor.data;
-        const size = w * h;
+      // masks contains an array of Tensors (length of batch size). Each Tensor has dimensions [1, 3, h, w].
+      // Wait, let's verify if masks is an array of length 1, where the tensor inside has dim [point_batch_size, 3, h, w],
+      // or if it returns an array of length point_batch_size!
+      // In Transformers.js image processor:
+      // "for (let i = 0; i < original_sizes.length; ++i)" -> original_sizes.length is 1 for batch size of 1.
+      // Wait, in our inputs call: "const inputs = await samProcessor(raw_image, ...)"
+      // Here raw_image is a single image, so original_sizes has length 1.
+      // Therefore, post_process_masks returns an array of length 1, i.e., `masks` has length 1!
+      // The single tensor at `masks[0]` has shape [1, point_batch_size, 3, h, w] or similar.
+      // Wait, let's look at post_process_masks code:
+      // "let interpolated_mask = await interpolate_4d(masks[i], ...)" where masks[i] is outputs.pred_masks[i].
+      // Since outputs.pred_masks has dims [1, point_batch_size, 3, 256, 256],
+      // outputs.pred_masks[0] has dims [point_batch_size, 3, 256, 256].
+      // After interpolation and binarization, interpolated_mask has dims [point_batch_size, 3, h, w].
+      // So `masks[0]` has shape [point_batch_size, 3, h, w], and is of type "bool" (Uint8Array).
+      // Let's iterate over each prompt (j from 0 to point_batch_size - 1) in `masks[0]`.
 
+      const tensor = masks[0];
+      const data = tensor.data; // Uint8Array containing 0 or 1
+      const numPrompts = batchPoints.length;
+      const size = w * h;
+
+      for (let j = 0; j < numPrompts; j++) {
         let bestIdx = 0;
         let maxScore = -Infinity;
         if (outputs.iou_scores && outputs.iou_scores.data) {
-          const baseScoreIdx = i * 3;
+          // outputs.iou_scores has shape [1, numPrompts, 3]
+          const baseScoreIdx = j * 3;
           for (let c = 0; c < 3; c++) {
             const score = outputs.iou_scores.data[baseScoreIdx + c];
             if (score > maxScore) {
@@ -992,16 +1032,18 @@ async function runMicroSamAsync(rec) {
           }
         }
 
-        const maskOffset = bestIdx * size;
+        // Each prompt has 3 masks. The offset for prompt j, mask bestIdx is:
+        // (j * 3 + bestIdx) * size
+        const maskOffset = (j * 3 + bestIdx) * size;
 
         for (let y = 1; y < h - 1; y++) {
           for (let x = 1; x < w - 1; x++) {
             const idx = y * w + x;
-            if (data[maskOffset + idx]) {
-              if (!data[maskOffset + idx - 1] ||
-                  !data[maskOffset + idx + 1] ||
-                  !data[maskOffset + idx - w] ||
-                  !data[maskOffset + idx + w]) {
+            if (data[maskOffset + idx] === 1) {
+              if (data[maskOffset + idx - 1] === 0 ||
+                  data[maskOffset + idx + 1] === 0 ||
+                  data[maskOffset + idx - w] === 0 ||
+                  data[maskOffset + idx + w] === 0) {
                 boundaries[idx] = 1;
               }
             }
@@ -1012,6 +1054,7 @@ async function runMicroSamAsync(rec) {
 
     rec.microsamBinary = boundaries;
     rec.microsamBinaryGridSize = gridSize;
+    rec.microsamBinaryThreshold = samThresholdVal;
     log(getI18nStr('logSamComplete'));
   } catch (err) {
     log(`<span style="color:#ff6b6b">MicroSAM Error: ${err.message}</span>`);
@@ -1070,7 +1113,8 @@ function binarizeSync(rec) {
 
 async function binarize(rec) {
   if (rec.binMethod === 'microsam') {
-    if (rec.microsamBinary && rec.microsamBinaryGridSize === rec.samGridSize) {
+    const targetThreshold = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
+    if (rec.microsamBinary && rec.microsamBinaryGridSize === rec.samGridSize && rec.microsamBinaryThreshold === targetThreshold) {
       return rec.microsamBinary;
     }
     await runMicroSamAsync(rec);

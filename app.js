@@ -1115,6 +1115,171 @@ async function runMicroSamAsync(rec) {
   }
 }
 
+// --- JS implementations of Frangi and Meijering (approximate) ---
+// These provide a pure-JS fallback/replacement for the Pyodide-based
+// skimage filters. They are approximate but avoid loading Pyodide
+// when only these filters are needed.
+
+function gaussianKernel1D(sigma) {
+  const radius = Math.max(1, Math.ceil(sigma * 3));
+  const len = radius * 2 + 1;
+  const kernel = new Float32Array(len);
+  const sigma2 = sigma * sigma;
+  let sum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma2));
+    kernel[i + radius] = v;
+    sum += v;
+  }
+  for (let i = 0; i < len; i++) kernel[i] /= sum;
+  return { kernel, radius };
+}
+
+function separableConvolveFloat(src, w, h, kernelObj) {
+  const { kernel, radius } = kernelObj;
+  const tmp = new Float32Array(w * h);
+  const out = new Float32Array(w * h);
+
+  // horizontal
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const xx = Math.min(w - 1, Math.max(0, x + k));
+        v += src[y * w + xx] * kernel[k + radius];
+      }
+      tmp[y * w + x] = v;
+    }
+  }
+
+  // vertical
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h; y++) {
+      let v = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const yy = Math.min(h - 1, Math.max(0, y + k));
+        v += tmp[yy * w + x] * kernel[k + radius];
+      }
+      out[y * w + x] = v;
+    }
+  }
+  return out;
+}
+
+function computeHessianApproximations(img, w, h) {
+  // img: Float32Array
+  const Dxx = new Float32Array(w * h);
+  const Dyy = new Float32Array(w * h);
+  const Dxy = new Float32Array(w * h);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const xm1 = Math.max(0, x - 1);
+      const xp1 = Math.min(w - 1, x + 1);
+      const ym1 = Math.max(0, y - 1);
+      const yp1 = Math.min(h - 1, y + 1);
+
+      const I = (xx, yy) => img[yy * w + xx];
+
+      const center = I(x, y);
+
+      Dxx[y * w + x] = I(xp1, y) - 2 * center + I(xm1, y);
+      Dyy[y * w + x] = I(x, yp1) - 2 * center + I(x, ym1);
+      // Mixed derivative approximation
+      Dxy[y * w + x] = (I(xp1, yp1) - I(xp1, ym1) - I(xm1, yp1) + I(xm1, ym1)) * 0.25;
+    }
+  }
+
+  return { Dxx, Dyy, Dxy };
+}
+
+function runJSFrangiMeijering(rec) {
+  const w = rec.width, h = rec.height;
+  // Extract green channel as float
+  const d = rec.imgData.data;
+  const g = new Float32Array(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) g[p] = d[i + 1];
+
+  // build sigmas list
+  const sigma_min = Math.max(0.5, rec.sigmaMin || 1.0);
+  const sigma_max = Math.max(sigma_min, rec.sigmaMax || sigma_min);
+  const sigmas = (sigma_min >= sigma_max) ? [sigma_min] : (function() {
+    const arr = [];
+    for (let s = sigma_min; s <= sigma_max + 0.001; s += 0.5) arr.push(s);
+    return arr;
+  })();
+
+  const vesselnessMax = new Float32Array(w * h);
+  let vmin = Infinity, vmax = -Infinity;
+
+  for (const sigma of sigmas) {
+    const kernelObj = gaussianKernel1D(sigma);
+    const smoothed = separableConvolveFloat(g, w, h, kernelObj);
+
+    const { Dxx, Dyy, Dxy } = computeHessianApproximations(smoothed, w, h);
+
+    const scale = sigma * sigma;
+
+    for (let p = 0; p < w * h; p++) {
+      let dxx = Dxx[p] * scale;
+      let dyy = Dyy[p] * scale;
+      let dxy = Dxy[p] * scale;
+
+      // Hessian eigenvalues
+      const trace = dxx + dyy;
+      const det = dxx * dyy - dxy * dxy;
+      const tmp = Math.max(0, (trace * trace) / 4 - det);
+      const sq = Math.sqrt(tmp);
+      let lambda1 = trace / 2 + sq;
+      let lambda2 = trace / 2 - sq;
+
+      // order by absolute value: |l1| <= |l2|
+      if (Math.abs(lambda1) > Math.abs(lambda2)) {
+        const t = lambda1; lambda1 = lambda2; lambda2 = t;
+      }
+
+      // Frangi vesselness (approx)
+      const beta = 0.5;
+      const c = 15.0;
+      const RA = (Math.abs(lambda2) < 1e-12) ? 0 : Math.abs(lambda1) / Math.abs(lambda2);
+      const S = Math.sqrt(lambda1 * lambda1 + lambda2 * lambda2);
+      // when searching for bright ridges, require lambda2 < 0
+      let vessel = 0;
+      if (rec.binMethod === 'frangi') {
+        if (lambda2 < 0) {
+          vessel = Math.exp(- (RA * RA) / (2 * beta * beta)) * (1 - Math.exp(- (S * S) / (2 * c * c)));
+        } else {
+          vessel = 0;
+        }
+      } else {
+        // meijering-like: emphasize line responses (abs of smallest eigenvalue)
+        vessel = Math.abs(lambda1) / (Math.abs(lambda2) + 1e-12);
+      }
+
+      if (vessel > vesselnessMax[p]) vesselnessMax[p] = vessel;
+      if (vesselnessMax[p] < vmin) vmin = vesselnessMax[p];
+      if (vesselnessMax[p] > vmax) vmax = vesselnessMax[p];
+    }
+  }
+
+  // Normalize to 0-255 Uint8
+  const out = new Uint8Array(w * h);
+  if (vmax <= vmin) {
+    // all zeros
+    return rec.filteredGrayscale = out;
+  }
+  for (let p = 0; p < w * h; p++) {
+    const norm = (vesselnessMax[p] - vmin) / (vmax - vmin);
+    out[p] = Math.max(0, Math.min(255, Math.round(norm * 255)));
+  }
+
+  rec.filteredGrayscale = out;
+  rec.filteredMethod = rec.binMethod;
+  rec.filteredSigmaMin = rec.sigmaMin;
+  rec.filteredSigmaMax = rec.sigmaMax;
+  return out;
+}
+
 let pyodideInstance = null;
 let isPyodideLoading = false;
 
@@ -1156,12 +1321,23 @@ async function runPyodideFilterAsync(rec) {
   drawOverlay();
 
   try {
+    const filterName = rec.binMethod; // "frangi" or "meijering"
+
+    // If filter is frangi or meijering, use the JS implementation instead
+    if (filterName === 'frangi' || filterName === 'meijering') {
+      log(getI18nStr('logPyodideRunning', {filterName: filterName.toUpperCase()}));
+      runJSFrangiMeijering(rec);
+      log(getI18nStr('logPyodideComplete', {filterName: filterName.toUpperCase()}));
+      state.pyodideProcessing = false;
+      drawOverlay();
+      return;
+    }
+
     const pyodide = await ensurePyodideLoaded();
     if (!pyodide) {
       throw new Error("Could not initialize Python environment.");
     }
 
-    const filterName = rec.binMethod; // "frangi" or "meijering"
     log(getI18nStr('logPyodideRunning', {filterName: filterName.toUpperCase()}));
 
     // Extract green channel to Uint8Array

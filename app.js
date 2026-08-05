@@ -63,6 +63,9 @@ function applyTranslations(lang) {
     els.islandSizeVal.textContent = rec.islandSize;
     els.mergeVal.textContent = rec.mergeDist;
     els.spurLenVal.textContent = rec.spurLen;
+    if (rec.samGridSize !== undefined) {
+      els.samGridSizeVal.textContent = rec.samGridSize;
+    }
   } else {
     // Refresh Gemini select placeholder when no models loaded
     if (els.geminiModel.disabled) {
@@ -127,6 +130,9 @@ const els = {
   btnLoadExample: document.getElementById('btnLoadExample'),
   imgList: document.getElementById('imgList'),
   binMethod: document.getElementById('binMethod'),
+  panelMicroSam: document.getElementById('panelMicroSam'),
+  samGridSize: document.getElementById('samGridSize'),
+  samGridSizeVal: document.getElementById('samGridSizeVal'),
   panelGlobal: document.getElementById('panelGlobal'),
   threshold: document.getElementById('threshold'),
   thVal: document.getElementById('thVal'),
@@ -346,6 +352,7 @@ function loadFile(file){
       holeSize: 50,
       removeIslands: true,
       islandSize: 100,
+      samGridSize: 10,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -393,6 +400,7 @@ function loadImageFromUrl(url, name){
       holeSize: 50,
       removeIslands: true,
       islandSize: 100,
+      samGridSize: 10,
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -553,6 +561,7 @@ function setActiveImage(id){
   els.adaptSize.disabled = false;
   els.adaptC.disabled = false;
   els.adaptMinTh.disabled = false;
+  els.samGridSize.disabled = false;
   els.fillHoles.disabled = false;
   els.holeSize.disabled = !rec.fillHoles;
   els.removeIslands.disabled = false;
@@ -575,6 +584,8 @@ function setActiveImage(id){
   els.adaptCVal.textContent = rec.adaptC;
   els.adaptMinTh.value = rec.adaptMinTh;
   els.adaptMinThVal.textContent = rec.adaptMinTh;
+  els.samGridSize.value = rec.samGridSize || 10;
+  els.samGridSizeVal.textContent = rec.samGridSize || 10;
   els.fillHoles.checked = rec.fillHoles;
   els.holeSize.value = rec.holeSize;
   els.holeSizeVal.textContent = rec.holeSize;
@@ -590,9 +601,15 @@ function setActiveImage(id){
   if (rec.binMethod === 'adaptive') {
     els.panelAdaptive.style.display = '';
     els.panelGlobal.style.display = 'none';
-  } else {
+    els.panelMicroSam.style.display = 'none';
+  } else if (rec.binMethod === 'global') {
     els.panelAdaptive.style.display = 'none';
     els.panelGlobal.style.display = '';
+    els.panelMicroSam.style.display = 'none';
+  } else {
+    els.panelAdaptive.style.display = 'none';
+    els.panelGlobal.style.display = 'none';
+    els.panelMicroSam.style.display = '';
   }
 
   els.btnDetectGemini.disabled = !(els.geminiKey.value && els.geminiModel.value);
@@ -608,10 +625,23 @@ els.binMethod.addEventListener('change', () => {
   if (rec.binMethod === 'adaptive') {
     els.panelAdaptive.style.display = '';
     els.panelGlobal.style.display = 'none';
-  } else {
+    els.panelMicroSam.style.display = 'none';
+  } else if (rec.binMethod === 'global') {
     els.panelAdaptive.style.display = 'none';
     els.panelGlobal.style.display = '';
+    els.panelMicroSam.style.display = 'none';
+  } else {
+    els.panelAdaptive.style.display = 'none';
+    els.panelGlobal.style.display = 'none';
+    els.panelMicroSam.style.display = '';
   }
+  drawOverlay();
+});
+
+els.samGridSize.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.samGridSize = parseInt(els.samGridSize.value, 10);
+  els.samGridSizeVal.textContent = rec.samGridSize;
 });
 
 els.threshold.addEventListener('input', () => {
@@ -883,7 +913,119 @@ function removeSmallIslands(bin, w, h, maxIslandSize) {
   }
 }
 
-function binarize(rec) {
+let samModel = null;
+let samProcessor = null;
+
+async function ensureSamLoaded() {
+  if (samModel && samProcessor) return;
+  log(getI18nStr('logLoadingSam'));
+  const { SamModel, AutoProcessor, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js');
+  env.allowLocalModels = false;
+  samModel = await SamModel.from_pretrained('Xenova/slimsam-77-uniform');
+  samProcessor = await AutoProcessor.from_pretrained('Xenova/slimsam-77-uniform');
+  log(getI18nStr('logSamLoaded'));
+}
+
+async function runMicroSamAsync(rec) {
+  if (state.samProcessing) return;
+  state.samProcessing = true;
+  drawOverlay();
+  try {
+    await ensureSamLoaded();
+    log(getI18nStr('logSamProcessing'));
+
+    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.2.4/dist/transformers.min.js');
+    const raw_image = RawImage.fromCanvas(els.base);
+
+    const w = rec.width;
+    const h = rec.height;
+    const boundaries = new Uint8Array(w * h);
+
+    // Generate grid points
+    const points = [];
+    const gridSize = rec.samGridSize || 10;
+    for (let i = 1; i < gridSize; i++) {
+      for (let j = 1; j < gridSize; j++) {
+        const px = Math.round((i / gridSize) * w);
+        const py = Math.round((j / gridSize) * h);
+        points.push([px, py]);
+      }
+    }
+
+    log(`MicroSAM: Processing ${points.length} grid prompts...`);
+
+    // Process in batches
+    const batchSize = 16;
+    for (let start = 0; start < points.length; start += batchSize) {
+      const batchPoints = points.slice(start, start + batchSize);
+      const inputPointsArr = batchPoints.map(p => [p]);
+      const inputLabelsArr = batchPoints.map(() => [1]);
+
+      const inputs = await samProcessor(raw_image, {
+        input_points: inputPointsArr,
+        input_labels: inputLabelsArr
+      });
+
+      const outputs = await samModel(inputs);
+
+      const masks = await samProcessor.post_process_masks(
+        outputs.pred_masks,
+        inputs.original_sizes,
+        inputs.reshaped_input_sizes
+      );
+
+      for (let i = 0; i < masks.length; i++) {
+        const tensor = masks[i];
+        const data = tensor.data;
+        const size = w * h;
+
+        let bestIdx = 0;
+        let maxScore = -Infinity;
+        if (outputs.iou_scores && outputs.iou_scores.data) {
+          const baseScoreIdx = i * 3;
+          for (let c = 0; c < 3; c++) {
+            const score = outputs.iou_scores.data[baseScoreIdx + c];
+            if (score > maxScore) {
+              maxScore = score;
+              bestIdx = c;
+            }
+          }
+        }
+
+        const maskOffset = bestIdx * size;
+
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const idx = y * w + x;
+            if (data[maskOffset + idx]) {
+              if (!data[maskOffset + idx - 1] ||
+                  !data[maskOffset + idx + 1] ||
+                  !data[maskOffset + idx - w] ||
+                  !data[maskOffset + idx + w]) {
+                boundaries[idx] = 1;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    rec.microsamBinary = boundaries;
+    rec.microsamBinaryGridSize = gridSize;
+    log(getI18nStr('logSamComplete'));
+  } catch (err) {
+    log(`<span style="color:#ff6b6b">MicroSAM Error: ${err.message}</span>`);
+    console.error(err);
+  } finally {
+    state.samProcessing = false;
+    drawOverlay();
+  }
+}
+
+function binarizeSync(rec) {
+  if (rec.binMethod === 'microsam') {
+    return rec.microsamBinary || new Uint8Array(rec.width * rec.height);
+  }
   const w = rec.width, h = rec.height;
   const g = smoothGreen(rec.imgData);
   const out = new Uint8Array(w * h);
@@ -924,6 +1066,17 @@ function binarize(rec) {
   }
 
   return out;
+}
+
+async function binarize(rec) {
+  if (rec.binMethod === 'microsam') {
+    if (rec.microsamBinary && rec.microsamBinaryGridSize === rec.samGridSize) {
+      return rec.microsamBinary;
+    }
+    await runMicroSamAsync(rec);
+    return rec.microsamBinary || new Uint8Array(rec.width * rec.height);
+  }
+  return binarizeSync(rec);
 }
 
 function pruneSpurs(skel, w, h, minSpurLen){
@@ -1111,10 +1264,10 @@ function geometricMergeNodes(nodes, radius){
   });
 }
 
-function detectGraph(rec){
-  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : `${getI18nStr('optGlobal')} (th=${rec.threshold})`;
-  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
-  const bin = binarize(rec);
+async function detectGraph(rec){
+  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : (rec.binMethod === 'global' ? `${getI18nStr('optGlobal')} (th=${rec.threshold})` : 'MicroSAM');
+  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : (rec.binMethod === 'global' ? getI18nStr('logBinGlobal', {th: rec.threshold}) : 'Binarizing (MicroSAM)...'));
+  const bin = await binarize(rec);
   log(getI18nStr('logSkel'));
   const skel = thin(bin, rec.width, rec.height);
   const w=rec.width, h=rec.height;
@@ -1426,9 +1579,9 @@ els.btnDetect.addEventListener('click', ()=>{
   const rec = activeImg(); if(!rec) return;
   els.btnDetect.disabled = true;
   log(getI18nStr('logDetecting'));
-  setTimeout(()=>{ // let UI update before heavy compute
+  setTimeout(async ()=>{ // let UI update before heavy compute
     try{
-      detectGraph(rec);
+      await detectGraph(rec);
     } catch(err){
       log(`<span style="color:#ff6b6b">${getI18nStr('errDetect', {err: err.message})}</span>`);
       console.error(err);
@@ -1582,9 +1735,9 @@ function localBlobAround(skel, w, h, sx, sy, radius){
 }
 
 async function detectGraphWithGemini(rec, apiKey, modelName){
-  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : `${getI18nStr('optGlobal')} (th=${rec.threshold})`;
-  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : getI18nStr('logBinGlobal', {th: rec.threshold}));
-  const bin = binarize(rec);
+  const modeStr = rec.binMethod === 'adaptive' ? getI18nStr('optAdaptive') : (rec.binMethod === 'global' ? `${getI18nStr('optGlobal')} (th=${rec.threshold})` : 'MicroSAM');
+  log(rec.binMethod === 'adaptive' ? getI18nStr('logBinAdaptive') : (rec.binMethod === 'global' ? getI18nStr('logBinGlobal', {th: rec.threshold}) : 'Binarizing (MicroSAM)...'));
+  const bin = await binarize(rec);
   const skel = thin(bin, rec.width, rec.height);
   const spurLen = rec.spurLen;
   pruneSpurs(skel, rec.width, rec.height, spurLen);
@@ -1752,7 +1905,7 @@ function drawOverlay(){
 
   // If binary display toggle is on, draw binary overlay as a semi-transparent, subtle mask first
   if (state.showBinary) {
-    const bin = binarize(rec);
+    const bin = binarizeSync(rec);
     const img = ovCtx.createImageData(rec.width, rec.height);
     for(let i=0;i<bin.length;i++){
       if(bin[i]){
@@ -1832,6 +1985,15 @@ function drawOverlay(){
       ovCtx.beginPath(); ovCtx.arc(p[0],p[1],2.5,0,Math.PI*2);
       ovCtx.fillStyle='#ff4dd8'; ovCtx.fill();
     });
+  }
+
+  if (state.samProcessing) {
+    ovCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ovCtx.fillRect(0, 0, rec.width, rec.height);
+    ovCtx.fillStyle = "#39ff9e";
+    ovCtx.font = "bold 16px sans-serif";
+    ovCtx.textAlign = "center";
+    ovCtx.fillText(getI18nStr('logSamProcessing') || "Processing MicroSAM Cell Segmentation...", rec.width / 2, rec.height / 2);
   }
 }
 

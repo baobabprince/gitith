@@ -62,7 +62,20 @@
       <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled>
         <option value="adaptive" data-i18n="optAdaptive">אדפטיבית (מקומית)</option>
         <option value="global" data-i18n="optGlobal">גלובלית (Otsu)</option>
+        <option value="microsam" data-i18n="optMicroSam">MicroSAM (SlimSAM)</option>
       </select>
+
+      <div id="panelMicroSam" style="display:none; margin-bottom: 8px;">
+        <label class="small">
+          <span data-i18n="lblSamGridSize">צפיפות גריד סגמנטציה:</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipSamGridSize"></span>
+          </span>
+          <span id="samGridSizeVal">10</span>
+        </label>
+        <input type="range" id="samGridSize" min="4" max="24" step="2" value="10" disabled>
+      </div>
 
       <div id="panelGlobal" style="display:none;">
         <label class="small">

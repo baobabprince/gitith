@@ -6,6 +6,7 @@
 <title>TJ Undulation Analyzer — ניתוח פיתולי צמתי הדוקים</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='64' height='64'%3E%3Cpath d='M32 32 L32 4 A28 28 0 0 0 8 48 Z' fill='%230d2417' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 32 L56 48 A28 28 0 0 0 32 4' fill='%230b1d12' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 32 L8 48 A28 28 0 0 0 56 48 Z' fill='%2311301e' stroke='%231f7a52' stroke-width='2'/%3E%3Cpath d='M32 6 L32 32 L10 46 M32 32 L54 46' fill='none' stroke='%2339ff9e' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23ffd54a' stroke='%23ffffff' stroke-width='1.5'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ffffff' opacity='0.8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
 </head>
 <body>
 <div id="app" class="tab-images">
@@ -74,7 +75,31 @@
         <option value="adaptive" data-i18n="optAdaptive">אדפטיבית (מקומית)</option>
         <option value="global" data-i18n="optGlobal">גלובלית (Otsu)</option>
         <option value="microsam" data-i18n="optMicroSam">MicroSAM (SlimSAM)</option>
+        <option value="frangi" data-i18n="optFrangi">Frangi</option>
+        <option value="meijering" data-i18n="optMeijering">Meijering</option>
       </select>
+
+      <div id="panelSigmas" style="display:none; margin-bottom: 8px;">
+        <label class="small">
+          <span data-i18n="lblSigmaMin">מינימום סיגמה (עובי מינימלי):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipSigmaMin">הערך המינימלי של סיגמה (עובי דופן מינימלי לזיהוי).</span>
+          </span>
+          <span id="sigmaMinVal">1.0</span>
+        </label>
+        <input type="range" id="sigmaMin" min="0.1" max="10.0" step="0.1" value="1.0" disabled>
+
+        <label class="small" style="margin-top:6px;">
+          <span data-i18n="lblSigmaMax">מקסימום סיגמה (עובי מקסימלי):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipSigmaMax">הערך המקסימלי של סיגמה (עובי דופן מקסימלי לזיהוי).</span>
+          </span>
+          <span id="sigmaMaxVal">4.0</span>
+        </label>
+        <input type="range" id="sigmaMax" min="0.5" max="20.0" step="0.5" value="4.0" disabled>
+      </div>
 
       <div id="panelMicroSam" style="display:none; margin-bottom: 8px;">
         <label class="small">

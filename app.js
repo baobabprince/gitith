@@ -2527,12 +2527,12 @@ els.btnDetectGemini.addEventListener('click', async ()=>{
 function ratioColor(ratio){
   if(!isFinite(ratio)) return '#888';
   const t = Math.max(0, Math.min(1, (ratio-1)/0.5)); // 1.0 -> 1.5+
-  // stops: cyan -> green -> yellow -> red
+  // stops: Royal Blue -> Deep Purple -> Vivid Pink/Magenta -> Fiery Red
   const stops = [
-    [0.00,[58,209,255]],
-    [0.33,[57,255,158]],
-    [0.66,[255,225,74]],
-    [1.00,[255,107,107]],
+    [0.00,[41,121,255]],
+    [0.33,[156,39,176]],
+    [0.66,[255,64,129]],
+    [1.00,[255,23,68]],
   ];
   for(let i=0;i<stops.length-1;i++){
     const [t0,c0]=stops[i], [t1,c1]=stops[i+1];
@@ -2542,7 +2542,7 @@ function ratioColor(ratio){
       return `rgb(${c[0]},${c[1]},${c[2]})`;
     }
   }
-  return '#ff6b6b';
+  return 'rgb(255,23,68)';
 }
 
 function drawOverlay(){

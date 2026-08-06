@@ -2699,6 +2699,32 @@ function handleSortClick(col) {
       sortState.direction = null;
     }
   }
+
+  // Log the sort action to the console / app log for visibility and validation
+  const colNames = {
+    nodes: currentLang === 'en' ? '#' : (currentLang === 'ar' ? '#' : '#'),
+    actual: currentLang === 'en' ? 'Actual Length' : (currentLang === 'ar' ? 'الطول الفعلي' : 'אורך בפועל'),
+    straight: currentLang === 'en' ? 'Straight Distance' : (currentLang === 'ar' ? 'المסافة المستقيمة' : 'מרחק ישר'),
+    ratio: currentLang === 'en' ? 'Ratio' : (currentLang === 'ar' ? 'النسبة' : 'יחס'),
+    include: currentLang === 'en' ? 'Include in Stats' : (currentLang === 'ar' ? 'כלול בסטטיסטיקה' : 'כלול בסטט\'')
+  };
+  const dirNames = {
+    desc: currentLang === 'en' ? 'descending' : (currentLang === 'ar' ? 'تنازلي' : 'יורד'),
+    asc: currentLang === 'en' ? 'ascending' : (currentLang === 'ar' ? 'עולה' : 'עולה')
+  };
+
+  if (sortState.column && sortState.direction) {
+    const colName = colNames[sortState.column];
+    const dirName = dirNames[sortState.direction];
+    log(currentLang === 'en' ? `Sorted table by ${colName} (${dirName})` :
+        (currentLang === 'ar' ? `تم ترتيب الجدول לפי ${colName} (${dirName})` :
+        `הטבלה מוינה לפי ${colName} (בסדר ${dirName})`));
+  } else {
+    log(currentLang === 'en' ? 'Table sorted to original order' :
+        (currentLang === 'ar' ? 'تمت إعادة ترتيب الجدول إلى الوضع الأصلي' :
+        'הטבלה הוחזרה לסדר המקורי'));
+  }
+
   renderEdgeTableHeaders();
   renderEdgeTable();
 }

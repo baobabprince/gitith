@@ -1,5 +1,27 @@
 let currentLang = localStorage.getItem('tjLang') || 'he';
 
+function renderEdgeTableHeaders() {
+  const dict = translations[currentLang] || translations['he'];
+  const headers = [
+    { id: 'thNodesHeader', key: 'thNodes', col: 'nodes' },
+    { id: 'thActualHeader', key: 'thActual', col: 'actual' },
+    { id: 'thStraightHeader', key: 'thStraight', col: 'straight' },
+    { id: 'thRatioHeader', key: 'thRatio', col: 'ratio' },
+    { id: 'thIncludeHeader', key: 'thInclude', col: 'include' }
+  ];
+
+  headers.forEach(h => {
+    const el = document.getElementById(h.id);
+    if (!el) return;
+    let text = dict[h.key] || h.key;
+    if (sortState.column === h.col && sortState.direction) {
+      const arrow = sortState.direction === 'desc' ? ' ▼' : ' ▲';
+      text += arrow;
+    }
+    el.textContent = text;
+  });
+}
+
 function applyTranslations(lang) {
   currentLang = lang;
   localStorage.setItem('tjLang', lang);
@@ -31,6 +53,10 @@ function applyTranslations(lang) {
   const dict = translations[lang];
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
+    // Skip table headers since renderEdgeTableHeaders takes care of them with sorting indicators
+    if (['thNodes', 'thActual', 'thStraight', 'thRatio', 'thInclude'].includes(key)) {
+      return;
+    }
     if (dict[key]) {
       // Use innerHTML for titles with spans or hints with bold styling
       if (key === 'title' || key.startsWith('hint') || key.startsWith('log') || key.startsWith('err') || key.startsWith('tabMobile')) {
@@ -126,6 +152,11 @@ const state = {
   hideAllMarks: false,
   pyodideLoading: false,
   pyodideProcessing: false,
+};
+
+const sortState = {
+  column: null,    // 'nodes' | 'actual' | 'straight' | 'ratio' | 'include'
+  direction: null, // null | 'desc' | 'asc'
 };
 
 // Global Zoom & Pan State
@@ -2655,46 +2686,126 @@ function updateStatsPanel(){
   }
 }
 
+function handleSortClick(col) {
+  if (sortState.column !== col) {
+    sortState.column = col;
+    sortState.direction = 'desc'; // Start descending as requested
+  } else {
+    // Cycle: desc -> asc -> null
+    if (sortState.direction === 'desc') {
+      sortState.direction = 'asc';
+    } else if (sortState.direction === 'asc') {
+      sortState.column = null;
+      sortState.direction = null;
+    }
+  }
+  renderEdgeTableHeaders();
+  renderEdgeTable();
+}
+
+function initSortingEvents() {
+  const headers = [
+    { id: 'thNodesHeader', col: 'nodes' },
+    { id: 'thActualHeader', col: 'actual' },
+    { id: 'thStraightHeader', col: 'straight' },
+    { id: 'thRatioHeader', col: 'ratio' },
+    { id: 'thIncludeHeader', col: 'include' }
+  ];
+
+  headers.forEach(h => {
+    const el = document.getElementById(h.id);
+    if (el) {
+      el.addEventListener('click', () => handleSortClick(h.col));
+    }
+  });
+}
+
 function renderEdgeTable(){
   const rec = activeImg();
   els.edgeTableBody.innerHTML='';
-  if(!rec) return;
-  rec.edges.forEach((e,i)=>{
+  if(!rec) {
+    renderEdgeTableHeaders();
+    return;
+  }
+
+  // Create a list of edges with their original 1-based index (for the `#` column)
+  const mappedEdges = rec.edges.map((e, index) => {
     if (e.includeInStats === undefined) {
       e.includeInStats = !e.incomplete;
     }
+    return { edge: e, originalIndex: index + 1 };
+  });
+
+  // Apply sorting if a sorting state is active
+  if (sortState.column && sortState.direction) {
+    const dir = sortState.direction === 'desc' ? -1 : 1;
+    mappedEdges.sort((a, b) => {
+      let valA, valB;
+      if (sortState.column === 'nodes') {
+        valA = a.originalIndex;
+        valB = b.originalIndex;
+      } else if (sortState.column === 'actual') {
+        valA = a.edge.length;
+        valB = b.edge.length;
+      } else if (sortState.column === 'straight') {
+        valA = a.edge.straight;
+        valB = b.edge.straight;
+      } else if (sortState.column === 'ratio') {
+        valA = isFinite(a.edge.ratio) ? a.edge.ratio : -Infinity;
+        valB = isFinite(b.edge.ratio) ? b.edge.ratio : -Infinity;
+      } else if (sortState.column === 'include') {
+        valA = a.edge.includeInStats ? 1 : 0;
+        valB = b.edge.includeInStats ? 1 : 0;
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+  }
+
+  renderEdgeTableHeaders();
+
+  mappedEdges.forEach(({edge, originalIndex}) => {
     const tr = document.createElement('tr');
-    if(e.id===state.selectedEdge) {
+    if(edge.id===state.selectedEdge) {
       tr.className='sel';
       setTimeout(() => {
         tr.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }, 0);
     }
 
-    const displayStraight = e.n2 ? e.straight.toFixed(1) : e.straight.toFixed(1);
-    const displayRatio = isFinite(e.ratio) ? e.ratio.toFixed(3) : '—';
+    const displayStraight = edge.n2 ? edge.straight.toFixed(1) : edge.straight.toFixed(1);
+    const displayRatio = isFinite(edge.ratio) ? edge.ratio.toFixed(3) : '—';
     const deleteText = currentLang === 'en' ? 'Delete' : (currentLang === 'ar' ? 'حذف' : 'מחק');
-    const isChecked = e.includeInStats ? 'checked' : '';
+    const isChecked = edge.includeInStats ? 'checked' : '';
 
-    tr.innerHTML = `<td>${i+1}${e.incomplete?' ⚠':''}${e.manual?' ✎':''}</td>
-      <td>${e.length.toFixed(1)}</td>
+    tr.innerHTML = `<td>${originalIndex}${edge.incomplete?' ⚠':''}${edge.manual?' ✎':''}</td>
+      <td>${edge.length.toFixed(1)}</td>
       <td>${displayStraight}</td>
       <td>${displayRatio}</td>
       <td style="text-align:center;"><input type="checkbox" class="include-chk" ${isChecked}></td>
-      <td><a class="linklike" data-del="${e.id}">${deleteText}</a></td>`;
-    tr.querySelector('td').onclick = ()=> selectEdge(e.id);
-    tr.querySelectorAll('td')[1].onclick = ()=> selectEdge(e.id);
-    tr.querySelectorAll('td')[2].onclick = ()=> selectEdge(e.id);
-    tr.querySelectorAll('td')[3].onclick = ()=> selectEdge(e.id);
+      <td><a class="linklike" data-del="${edge.id}">${deleteText}</a></td>`;
+
+    // Wire selection to row elements except action links and checkbox
+    const clickHandler = () => selectEdge(edge.id);
+    tr.querySelectorAll('td')[0].onclick = clickHandler;
+    tr.querySelectorAll('td')[1].onclick = clickHandler;
+    tr.querySelectorAll('td')[2].onclick = clickHandler;
+    tr.querySelectorAll('td')[3].onclick = clickHandler;
+
     const chk = tr.querySelector('.include-chk');
     chk.onclick = (ev)=> ev.stopPropagation();
     chk.onchange = ()=>{
-      e.includeInStats = chk.checked;
+      edge.includeInStats = chk.checked;
       updateStatsPanel();
       refreshImgList();
       drawOverlay();
+      if (sortState.column === 'include') {
+        renderEdgeTable();
+      }
     };
-    tr.querySelector('[data-del]').onclick = (ev)=>{ ev.stopPropagation(); deleteEdge(e.id); };
+    tr.querySelector('[data-del]').onclick = (ev)=>{ ev.stopPropagation(); deleteEdge(edge.id); };
     els.edgeTableBody.appendChild(tr);
   });
 }
@@ -3364,6 +3475,7 @@ function zoomAtPoint(clientX, clientY, factor) {
 }
 
 /* ===================== init ===================== */
+initSortingEvents();
 initZoomPanEvents();
 applyTranslations(currentLang);
 log(getI18nStr('logReady'));

@@ -189,6 +189,15 @@
   #edgeTable{width:100%;border-collapse:collapse;font-size:11.5px;}
   #edgeTable th{text-align:right;color:var(--text-dim);font-weight:500;padding:4px 3px;
     border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel2);}
+  #edgeTable th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  #edgeTable th.sortable:hover {
+    background: var(--line);
+    color: var(--green);
+  }
   #edgeTable td{padding:4px 3px;border-bottom:1px solid var(--line);cursor:pointer;}
   #edgeTable tr:hover td{background:#101913;}
   #edgeTable tr.sel td{background:#182a1c;color:var(--green);}

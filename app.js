@@ -200,6 +200,14 @@ const els = {
   adaptCVal: document.getElementById('adaptCVal'),
   adaptMinTh: document.getElementById('adaptMinTh'),
   adaptMinThVal: document.getElementById('adaptMinThVal'),
+  enableMedian: document.getElementById('enableMedian'),
+  panelMedianRadius: document.getElementById('panelMedianRadius'),
+  medianRadius: document.getElementById('medianRadius'),
+  medianRadiusVal: document.getElementById('medianRadiusVal'),
+  enableCLAHE: document.getElementById('enableCLAHE'),
+  panelClaheLimit: document.getElementById('panelClaheLimit'),
+  claheLimit: document.getElementById('claheLimit'),
+  claheLimitVal: document.getElementById('claheLimitVal'),
   fillHoles: document.getElementById('fillHoles'),
   panelHoleSize: document.getElementById('panelHoleSize'),
   holeSize: document.getElementById('holeSize'),
@@ -410,6 +418,10 @@ function loadFile(file){
       adaptSize: 41,
       adaptC: 7,
       adaptMinTh: 15,
+      enableMedian: false,
+      medianRadius: 3,
+      enableCLAHE: false,
+      claheLimit: 3.0,
       fillHoles: true,
       holeSize: 50,
       removeIslands: true,
@@ -460,6 +472,10 @@ function loadImageFromUrl(url, name){
       adaptSize: 41,
       adaptC: 7,
       adaptMinTh: 15,
+      enableMedian: false,
+      medianRadius: 3,
+      enableCLAHE: false,
+      claheLimit: 3.0,
       fillHoles: true,
       holeSize: 50,
       removeIslands: true,
@@ -562,6 +578,10 @@ function deleteImage(id) {
       els.adaptSize.disabled = true;
       els.adaptC.disabled = true;
       els.adaptMinTh.disabled = true;
+      els.enableMedian.disabled = true;
+      els.medianRadius.disabled = true;
+      els.enableCLAHE.disabled = true;
+      els.claheLimit.disabled = true;
       els.fillHoles.disabled = true;
       els.holeSize.disabled = true;
       els.removeIslands.disabled = true;
@@ -629,6 +649,10 @@ function setActiveImage(id){
   els.adaptMinTh.disabled = false;
   els.samGridSize.disabled = false;
   els.samThreshold.disabled = false;
+  els.enableMedian.disabled = false;
+  els.medianRadius.disabled = !(rec.enableMedian);
+  els.enableCLAHE.disabled = false;
+  els.claheLimit.disabled = !(rec.enableCLAHE);
   els.fillHoles.disabled = false;
   els.holeSize.disabled = !rec.fillHoles;
   els.removeIslands.disabled = false;
@@ -657,6 +681,16 @@ function setActiveImage(id){
   els.samGridSizeVal.textContent = rec.samGridSize || 10;
   els.samThreshold.value = rec.samThreshold !== undefined ? rec.samThreshold : 0.0;
   els.samThresholdVal.textContent = (rec.samThreshold !== undefined ? rec.samThreshold : 0.0).toFixed(1);
+  els.enableMedian.checked = !!rec.enableMedian;
+  els.medianRadius.value = rec.medianRadius || 3;
+  els.medianRadiusVal.textContent = (rec.medianRadius || 3) + 'x' + (rec.medianRadius || 3);
+  els.panelMedianRadius.style.display = rec.enableMedian ? '' : 'none';
+
+  els.enableCLAHE.checked = !!rec.enableCLAHE;
+  els.claheLimit.value = rec.claheLimit !== undefined ? rec.claheLimit : 3.0;
+  els.claheLimitVal.textContent = (rec.claheLimit !== undefined ? rec.claheLimit : 3.0).toFixed(1);
+  els.panelClaheLimit.style.display = rec.enableCLAHE ? '' : 'none';
+
   els.fillHoles.checked = rec.fillHoles;
   els.holeSize.value = rec.holeSize;
   els.holeSizeVal.textContent = rec.holeSize;
@@ -759,6 +793,36 @@ els.adaptMinTh.addEventListener('input', () => {
   const rec = activeImg(); if(!rec) return;
   rec.adaptMinTh = parseInt(els.adaptMinTh.value, 10);
   els.adaptMinThVal.textContent = rec.adaptMinTh;
+  if (state.showBinary) drawOverlay();
+});
+
+els.enableMedian.addEventListener('change', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.enableMedian = els.enableMedian.checked;
+  els.medianRadius.disabled = !rec.enableMedian;
+  els.panelMedianRadius.style.display = rec.enableMedian ? '' : 'none';
+  if (state.showBinary) drawOverlay();
+});
+
+els.medianRadius.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.medianRadius = parseInt(els.medianRadius.value, 10);
+  els.medianRadiusVal.textContent = rec.medianRadius + 'x' + rec.medianRadius;
+  if (state.showBinary) drawOverlay();
+});
+
+els.enableCLAHE.addEventListener('change', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.enableCLAHE = els.enableCLAHE.checked;
+  els.claheLimit.disabled = !rec.enableCLAHE;
+  els.panelClaheLimit.style.display = rec.enableCLAHE ? '' : 'none';
+  if (state.showBinary) drawOverlay();
+});
+
+els.claheLimit.addEventListener('input', () => {
+  const rec = activeImg(); if(!rec) return;
+  rec.claheLimit = parseFloat(els.claheLimit.value);
+  els.claheLimitVal.textContent = rec.claheLimit.toFixed(1);
   if (state.showBinary) drawOverlay();
 });
 
@@ -878,14 +942,159 @@ function updateCursor() {
   }
 }
 
-function smoothGreen(imgData){
+function applyMedianFilter(src, w, h, radius) {
+  const out = new Float32Array(w * h);
+  const half = Math.floor(radius / 2);
+  const values = new Float32Array(radius * radius);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let count = 0;
+      for (let dy = -half; dy <= half; dy++) {
+        for (let dx = -half; dx <= half; dx++) {
+          const nx = Math.max(0, Math.min(w - 1, x + dx));
+          const ny = Math.max(0, Math.min(h - 1, y + dy));
+          values[count++] = src[ny * w + nx];
+        }
+      }
+      // Quick sort for median
+      const sub = values.subarray(0, count);
+      sub.sort();
+      out[y * w + x] = sub[Math.floor(count / 2)];
+    }
+  }
+  return out;
+}
+
+function applyCLAHE(src, w, h, clipLimit) {
+  const out = new Float32Array(w * h);
+  const tilesX = 8;
+  const tilesY = 8;
+  const tileSizeX = Math.floor(w / tilesX);
+  const tileSizeY = Math.floor(h / tilesY);
+
+  if (tileSizeX < 2 || tileSizeY < 2) {
+    return src; // image too small
+  }
+
+  const numBins = 256;
+  const hists = [];
+
+  // 1. Calculate histograms for each tile
+  for (let ty = 0; ty < tilesY; ty++) {
+    for (let tx = 0; tx < tilesX; tx++) {
+      const hist = new Float32Array(numBins);
+      const xStart = tx * tileSizeX;
+      const yStart = ty * tileSizeY;
+      const xEnd = (tx === tilesX - 1) ? w : (tx + 1) * tileSizeX;
+      const yEnd = (ty === tilesY - 1) ? h : (ty + 1) * tileSizeY;
+      const numPixels = (xEnd - xStart) * (yEnd - yStart);
+
+      for (let y = yStart; y < yEnd; y++) {
+        for (let x = xStart; x < xEnd; x++) {
+          const val = Math.max(0, Math.min(255, Math.round(src[y * w + x])));
+          hist[val]++;
+        }
+      }
+
+      // Contrast limiting (clipping) & redistribution
+      const actualClipLimit = Math.max(1, Math.round((clipLimit * numPixels) / numBins));
+      let excess = 0;
+      for (let b = 0; b < numBins; b++) {
+        if (hist[b] > actualClipLimit) {
+          excess += hist[b] - actualClipLimit;
+          hist[b] = actualClipLimit;
+        }
+      }
+
+      const binIncr = excess / numBins;
+      let upperLimit = actualClipLimit - binIncr;
+      for (let b = 0; b < numBins; b++) {
+        if (hist[b] < upperLimit) {
+          excess -= binIncr;
+          hist[b] += binIncr;
+        } else if (hist[b] < actualClipLimit) {
+          excess -= (actualClipLimit - hist[b]);
+          hist[b] = actualClipLimit;
+        }
+      }
+
+      if (excess > 0) {
+        const step = Math.max(1, Math.floor(numBins / excess));
+        for (let b = 0; b < numBins && excess > 0; b += step) {
+          if (hist[b] < actualClipLimit) {
+            hist[b]++;
+            excess--;
+          }
+        }
+      }
+
+      // Calculate CDF (Cumulative Distribution Function)
+      const cdf = new Float32Array(numBins);
+      let sum = 0;
+      for (let b = 0; b < numBins; b++) {
+        sum += hist[b];
+        cdf[b] = sum / numPixels;
+      }
+
+      hists.push(cdf);
+    }
+  }
+
+  // 2. Interpolate CDFs across pixels
+  for (let y = 0; y < h; y++) {
+    // Find mapping parameters
+    const ty = (y - tileSizeY / 2) / tileSizeY;
+    const tyI = Math.floor(ty);
+    const tyF = ty - tyI;
+
+    const row0 = Math.max(0, Math.min(tilesY - 1, tyI));
+    const row1 = Math.max(0, Math.min(tilesY - 1, tyI + 1));
+
+    for (let x = 0; x < w; x++) {
+      const tx = (x - tileSizeX / 2) / tileSizeX;
+      const txI = Math.floor(tx);
+      const txF = tx - txI;
+
+      const col0 = Math.max(0, Math.min(tilesX - 1, txI));
+      const col1 = Math.max(0, Math.min(tilesX - 1, txI + 1));
+
+      const val = Math.max(0, Math.min(255, Math.round(src[y * w + x])));
+
+      const c00 = hists[row0 * tilesX + col0][val];
+      const c01 = hists[row0 * tilesX + col1][val];
+      const c10 = hists[row1 * tilesX + col0][val];
+      const c11 = hists[row1 * tilesX + col1][val];
+
+      // Bilinear interpolation
+      const valInterp = (1 - tyF) * ((1 - txF) * c00 + txF * c01) +
+                        tyF * ((1 - txF) * c10 + txF * c11);
+
+      out[y * w + x] = Math.max(0, Math.min(255, Math.round(valInterp * 255)));
+    }
+  }
+
+  return out;
+}
+
+function smoothGreen(imgData, optRec = null){
   // Two-pass 3x3 box blur on the green channel (approximates a wider
   // Gaussian) to suppress jagged-edge / fibrous staining noise that
   // otherwise produces spurious skeleton branches after thinning. A single
   // 3x3 pass is too weak for noisy, fibrous ZO-1-style staining.
   const w=imgData.width, h=imgData.height, d=imgData.data;
-  const g = new Float32Array(w*h);
+  let g = new Float32Array(w*h);
   for(let p=0,i=0;i<d.length;i+=4,p++) g[p]=d[i+1];
+
+  // Apply Preprocessing Filters if active
+  if (optRec) {
+    if (optRec.enableMedian) {
+      g = applyMedianFilter(g, w, h, optRec.medianRadius || 3);
+    }
+    if (optRec.enableCLAHE) {
+      g = applyCLAHE(g, w, h, optRec.claheLimit !== undefined ? optRec.claheLimit : 3.0);
+    }
+  }
 
   function boxBlurPass(src){
     const out = new Float32Array(w*h);
@@ -1663,7 +1872,7 @@ function binarizeSync(rec) {
   if ((rec.binMethod === 'frangi' || rec.binMethod === 'meijering') && rec.filteredGrayscale) {
     g = rec.filteredGrayscale;
   } else {
-    g = smoothGreen(rec.imgData);
+    g = smoothGreen(rec.imgData, rec);
   }
 
   const out = new Uint8Array(w * h);
@@ -3202,6 +3411,10 @@ document.getElementById('btnSaveSession').addEventListener('click', () => {
       adaptSize: img.adaptSize,
       adaptC: img.adaptC,
       adaptMinTh: img.adaptMinTh,
+      enableMedian: img.enableMedian,
+      medianRadius: img.medianRadius,
+      enableCLAHE: img.enableCLAHE,
+      claheLimit: img.claheLimit,
       fillHoles: img.fillHoles,
       holeSize: img.holeSize,
       removeIslands: img.removeIslands,
@@ -3280,6 +3493,10 @@ document.getElementById('sessionFileInput').addEventListener('change', async (e)
           adaptSize: sImg.adaptSize,
           adaptC: sImg.adaptC,
           adaptMinTh: sImg.adaptMinTh,
+          enableMedian: sImg.enableMedian !== undefined ? sImg.enableMedian : false,
+          medianRadius: sImg.medianRadius !== undefined ? sImg.medianRadius : 3,
+          enableCLAHE: sImg.enableCLAHE !== undefined ? sImg.enableCLAHE : false,
+          claheLimit: sImg.claheLimit !== undefined ? sImg.claheLimit : 3.0,
           fillHoles: sImg.fillHoles,
           holeSize: sImg.holeSize,
           removeIslands: sImg.removeIslands,

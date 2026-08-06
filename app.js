@@ -995,6 +995,7 @@ const SAM_CONFIG = {
 
 let samModel = null;
 let samProcessor = null;
+let samLoadedModel = null;
 
 async function ensureSamLoaded() {
   if (samModel && samProcessor) return;
@@ -1009,12 +1010,14 @@ async function ensureSamLoaded() {
   try {
     samModel = await SamModel.from_pretrained(SAM_CONFIG.model);
     samProcessor = await AutoProcessor.from_pretrained(SAM_CONFIG.processor);
-    log(`SAM2 loaded (${SAM_CONFIG.model})`);
+    samLoadedModel = SAM_CONFIG.model;
+    log(`SAM2 loaded (${samLoadedModel})`);
   } catch (err) {
-    log(`SAM2 failed, trying fallback...`);
+    log(`SAM2 failed, loading fallback model (${SAM_CONFIG.fallbackModel})...`);
     samModel = await SamModel.from_pretrained(SAM_CONFIG.fallbackModel);
     samProcessor = await AutoProcessor.from_pretrained(SAM_CONFIG.fallbackModel);
-    log(`Fallback SAM loaded`);
+    samLoadedModel = SAM_CONFIG.fallbackModel;
+    log(`Fallback SAM loaded (${samLoadedModel})`);
   }
 }
 
@@ -1111,6 +1114,70 @@ function generateSmartPrompts(rec) {
   return unique;
 }
 
+function normalizeSamMasks(masks, numPrompts, size, outputs) {
+  if (!masks) return [];
+
+  const queue = Array.isArray(masks) ? masks.slice() : [masks];
+  const candidates = [];
+  while (queue.length) {
+    const item = queue.shift();
+    if (!item) continue;
+    if (Array.isArray(item)) {
+      queue.push(...item);
+    } else {
+      candidates.push(item);
+    }
+  }
+
+  if (candidates.length === 0) return [];
+  if (candidates.every((m) => m?.data && m.data.length === size)) return candidates;
+
+  const tensor = candidates.length === 1 ? candidates[0] : null;
+  if (tensor?.data) {
+    const totalSize = tensor.data.length;
+    if (totalSize === size * numPrompts) {
+      return Array.from({ length: numPrompts }, (_, j) => ({
+        data: tensor.data.subarray(j * size, (j + 1) * size)
+      }));
+    }
+    if (totalSize === size * numPrompts * 3) {
+      return Array.from({ length: numPrompts }, (_, j) => {
+        const scores = outputs?.iou_scores?.data;
+        let bestMaskIdx = 0;
+        if (scores) {
+          let bestScore = -Infinity;
+          const base = j * 3;
+          for (let c = 0; c < 3; c++) {
+            const s = scores[base + c];
+            if (s > bestScore) { bestScore = s; bestMaskIdx = c; }
+          }
+        }
+        const offset = (j * 3 + bestMaskIdx) * size;
+        return { data: tensor.data.subarray(offset, offset + size) };
+      });
+    }
+  }
+
+  if (candidates.length === numPrompts && candidates.every((m) => m?.data && m.data.length === size * 3)) {
+    return candidates.map((tensor, j) => {
+      const scores = outputs?.iou_scores?.data;
+      let bestMaskIdx = 0;
+      if (scores) {
+        let bestScore = -Infinity;
+        const base = j * 3;
+        for (let c = 0; c < 3; c++) {
+          const s = scores[base + c];
+          if (s > bestScore) { bestScore = s; bestMaskIdx = c; }
+        }
+      }
+      const offset = bestMaskIdx * size;
+      return { data: tensor.data.subarray(offset, offset + size) };
+    });
+  }
+
+  return candidates;
+}
+
 async function runMicroSamAsync(rec) {
   if (state.samProcessing) return;
   state.samProcessing = true;
@@ -1131,7 +1198,8 @@ async function runMicroSamAsync(rec) {
       await runSamTiled(rec, fullMask);
     } else {
       const points = generateSmartPrompts(rec);
-      log(`MicroSAM: ${points.length} prompts (${SAM_CONFIG.model})`);
+      const activeModel = samLoadedModel || SAM_CONFIG.model;
+      log(`MicroSAM: ${points.length} prompts (${activeModel})`);
       
       const raw_image = RawImage.fromCanvas(els.base);
       const batchSize = SAM_CONFIG.maxPointsPerBatch;
@@ -1153,27 +1221,47 @@ async function runMicroSamAsync(rec) {
           { mask_threshold: threshold, binarize: true }
         );
         
-        // עיבוד תוצאות
-        const tensor = masks[0];
-        const data = tensor.data;
         const numPrompts = batch.length;
         const size = w * h;
+        const masksList = normalizeSamMasks(masks, numPrompts, size, outputs);
+        if (masksList.length === 0 || !masksList[0]?.data) {
+          throw new Error('MicroSAM returned no valid masks');
+        }
         
-        for (let j = 0; j < numPrompts; j++) {
-          // בחירת המסכה הטובה ביותר לכל prompt
-          let bestMaskIdx = 0;
-          if (outputs.iou_scores?.data) {
-            let bestScore = -Infinity;
-            const base = j * 3;
-            for (let c = 0; c < 3; c++) {
-              const s = outputs.iou_scores.data[base + c];
-              if (s > bestScore) { bestScore = s; bestMaskIdx = c; }
+        if (masksList.length === numPrompts && masksList.every((m) => m.data.length === size)) {
+          masksList.forEach((tensor) => {
+            const data = tensor.data;
+            for (let i = 0; i < size; i++) {
+              if (data[i]) fullMask[i] = 1;
             }
+          });
+        } else if (masksList.every((m) => m.data.length === size)) {
+          masksList.forEach((tensor) => {
+            const data = tensor.data;
+            for (let i = 0; i < size; i++) {
+              if (data[i]) fullMask[i] = 1;
+            }
+          });
+        } else {
+          const tensor = masksList[0];
+          const data = tensor.data;
+          if (data.length !== size * numPrompts * 3) {
+            throw new Error(`Unexpected SAM mask tensor size: ${data.length}`);
           }
-          
-          const offset = (j * 3 + bestMaskIdx) * size;
-          for (let i = 0; i < size; i++) {
-            if (data[offset + i]) fullMask[i] = 1;
+          for (let j = 0; j < numPrompts; j++) {
+            let bestMaskIdx = 0;
+            if (outputs.iou_scores?.data) {
+              let bestScore = -Infinity;
+              const base = j * 3;
+              for (let c = 0; c < 3; c++) {
+                const s = outputs.iou_scores.data[base + c];
+                if (s > bestScore) { bestScore = s; bestMaskIdx = c; }
+              }
+            }
+            const offset = (j * 3 + bestMaskIdx) * size;
+            for (let i = 0; i < size; i++) {
+              if (data[offset + i]) fullMask[i] = 1;
+            }
           }
         }
         

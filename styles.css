@@ -223,7 +223,7 @@
   #dropHint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:var(--text-dim);font-size:14px;border:2px dashed var(--line);border-radius:10px;
     margin:20px;pointer-events:none;}
-  #legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-top:6px;}
+  #legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim);margin-top:6px;direction:ltr;}
   #legend .grad{flex:1;height:8px;border-radius:4px;
     background:linear-gradient(90deg,#2979ff,#9c27b0,#ff4081,#ff1744);}
   a.linklike{color:var(--green);cursor:pointer;text-decoration:underline;}

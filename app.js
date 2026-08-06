@@ -329,7 +329,7 @@ function setMobileTab(tabId) {
   buttons.forEach(btn => btn.classList.remove('active'));
 
   // Remove tab-classes from app
-  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results');
+  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results', 'tab-log');
 
   // Add selected tab
   if (tabId === 'images') {
@@ -347,6 +347,9 @@ function setMobileTab(tabId) {
   } else if (tabId === 'results') {
     app.classList.add('tab-results');
     document.getElementById('tabMobResults').classList.add('active');
+  } else if (tabId === 'log') {
+    app.classList.add('tab-log');
+    document.getElementById('tabMobLog').classList.add('active');
   }
 
   // Defer resetZoomPan so the #center container renders fully with its true dimensions first.
@@ -363,6 +366,7 @@ document.getElementById('tabMobSettings').addEventListener('click', () => setMob
 document.getElementById('tabMobView').addEventListener('click', () => setMobileTab('view'));
 document.getElementById('tabMobEdit').addEventListener('click', () => setMobileTab('edit'));
 document.getElementById('tabMobResults').addEventListener('click', () => setMobileTab('results'));
+  document.getElementById('tabMobLog').addEventListener('click', () => setMobileTab('log'));
 
 
 function loadFile(file){
@@ -3121,6 +3125,196 @@ els.exportAll.onclick = ()=>{
   downloadCSV(buildCSVRows(state.images), `tj_undulation_all_images.csv`);
   log(getI18nStr('logExportingAll', {count: state.images.length}));
 };
+
+/* ===================== Session Save / Load ===================== */
+function serializeImgData(imgData) {
+  const canvas = document.createElement('canvas');
+  canvas.width = imgData.width;
+  canvas.height = imgData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(imgData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+function deserializeImgData(dataUrl, w, h) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(ctx.getImageData(0, 0, w, h));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+function base64ToUint8Array(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(uint8) {
+  let binary = '';
+  const len = uint8.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(uint8[i]);
+  }
+  return btoa(binary);
+}
+
+document.getElementById('btnSaveSession').addEventListener('click', () => {
+  if (state.images.length === 0) {
+    log(currentLang === 'en' ? 'No images loaded to save session' :
+        (currentLang === 'ar' ? 'لا توجد صور محملة لحفظ الجلسة' : 'אין תמונות טעונות לשמירת סשן'));
+    return;
+  }
+
+  log(currentLang === 'en' ? 'Preparing session for saving...' :
+      (currentLang === 'ar' ? 'جاري تحضير الجلسة للحفظ...' : 'מכין את הסשן לשמירה...'));
+
+  const serializedImages = state.images.map(img => {
+    return {
+      id: img.id,
+      name: img.name,
+      width: img.width,
+      height: img.height,
+      imgDataUrl: serializeImgData(img.imgData),
+      binaryBase64: img.binary ? uint8ArrayToBase64(img.binary) : null,
+      skeletonBase64: img.skeleton ? uint8ArrayToBase64(img.skeleton) : null,
+      nodes: img.nodes,
+      edges: img.edges,
+      threshold: img.threshold,
+      mergeDist: img.mergeDist,
+      spurLen: img.spurLen,
+      nextNodeId: img.nextNodeId,
+      nextEdgeId: img.nextEdgeId,
+      detected: img.detected,
+      binMethod: img.binMethod,
+      adaptSize: img.adaptSize,
+      adaptC: img.adaptC,
+      adaptMinTh: img.adaptMinTh,
+      fillHoles: img.fillHoles,
+      holeSize: img.holeSize,
+      removeIslands: img.removeIslands,
+      islandSize: img.islandSize,
+      samGridSize: img.samGridSize,
+      samThreshold: img.samThreshold,
+      sigmaMin: img.sigmaMin,
+      sigmaMax: img.sigmaMax,
+      microsamFullMaskBase64: img.microsamFullMask ? uint8ArrayToBase64(img.microsamFullMask) : null,
+      microsamBinaryBase64: img.microsamBinary ? uint8ArrayToBase64(img.microsamBinary) : null,
+      microsamSkeletonReadyBase64: img.microsamSkeletonReady ? uint8ArrayToBase64(img.microsamSkeletonReady) : null,
+      microsamBinaryGridSize: img.microsamBinaryGridSize,
+      microsamBinaryThreshold: img.microsamBinaryThreshold
+    };
+  });
+
+  const sessionData = {
+    activeId: state.activeId,
+    images: serializedImages
+  };
+
+  const json = JSON.stringify(sessionData);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tj_session_${new Date().toISOString().slice(0,10)}.tjsession`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  log(currentLang === 'en' ? 'Session saved successfully!' :
+      (currentLang === 'ar' ? 'تم حفظ الجلسة بنجاح!' : 'הסשן נשמר בהצלחה!'));
+});
+
+document.getElementById('btnLoadSession').addEventListener('click', () => {
+  document.getElementById('sessionFileInput').click();
+});
+
+document.getElementById('sessionFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  log(currentLang === 'en' ? 'Loading session file...' :
+      (currentLang === 'ar' ? 'جاري تحميل ملف الجلسة...' : 'טוען קובץ סשן...'));
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    try {
+      const sessionData = JSON.parse(event.target.result);
+      if (!sessionData.images || !Array.isArray(sessionData.images)) {
+        throw new Error('Invalid session file format');
+      }
+
+      state.images = [];
+      for (const sImg of sessionData.images) {
+        const imgData = await deserializeImgData(sImg.imgDataUrl, sImg.width, sImg.height);
+        const img = {
+          id: sImg.id,
+          name: sImg.name,
+          width: sImg.width,
+          height: sImg.height,
+          imgData: imgData,
+          binary: sImg.binaryBase64 ? base64ToUint8Array(sImg.binaryBase64) : null,
+          skeleton: sImg.skeletonBase64 ? base64ToUint8Array(sImg.skeletonBase64) : null,
+          nodes: sImg.nodes,
+          edges: sImg.edges,
+          threshold: sImg.threshold,
+          mergeDist: sImg.mergeDist,
+          spurLen: sImg.spurLen,
+          nextNodeId: sImg.nextNodeId,
+          nextEdgeId: sImg.nextEdgeId,
+          detected: sImg.detected,
+          binMethod: sImg.binMethod,
+          adaptSize: sImg.adaptSize,
+          adaptC: sImg.adaptC,
+          adaptMinTh: sImg.adaptMinTh,
+          fillHoles: sImg.fillHoles,
+          holeSize: sImg.holeSize,
+          removeIslands: sImg.removeIslands,
+          islandSize: sImg.islandSize,
+          samGridSize: sImg.samGridSize,
+          samThreshold: sImg.samThreshold,
+          sigmaMin: sImg.sigmaMin,
+          sigmaMax: sImg.sigmaMax,
+          microsamFullMask: sImg.microsamFullMaskBase64 ? base64ToUint8Array(sImg.microsamFullMaskBase64) : null,
+          microsamBinary: sImg.microsamBinaryBase64 ? base64ToUint8Array(sImg.microsamBinaryBase64) : null,
+          microsamSkeletonReady: sImg.microsamSkeletonReadyBase64 ? base64ToUint8Array(sImg.microsamSkeletonReadyBase64) : null,
+          microsamBinaryGridSize: sImg.microsamBinaryGridSize,
+          microsamBinaryThreshold: sImg.microsamBinaryThreshold
+        };
+        state.images.push(img);
+      }
+
+      state.activeId = sessionData.activeId || (state.images.length > 0 ? state.images[0].id : null);
+
+      log(currentLang === 'en' ? 'Session loaded successfully!' :
+          (currentLang === 'ar' ? 'تم تحميل الجلسة بنجاح!' : 'הסשן נטען בהצלחה!'));
+
+      if (state.activeId) {
+        setActiveImage(state.activeId);
+      } else {
+        refreshImgList();
+      }
+    } catch (err) {
+      log(`<span style="color:#ff6b6b">${currentLang === 'en' ? 'Failed to load session: ' : (currentLang === 'ar' ? 'فشل تحميل الجلسة: ' : 'טעינת סשן נכשלה: ') + err.message}</span>`);
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
 
 /* ===================== Open edge auto-connect ===================== */
 els.openEdgeRadius.addEventListener('input', () => {

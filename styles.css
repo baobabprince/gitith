@@ -91,7 +91,7 @@
   #center{grid-row:2;overflow:hidden;background:#060907;position:relative;
     display:flex;align-items:flex-start;justify-content:flex-start;padding:20px;}
   #right{grid-row:2;background:var(--panel);border-right:1px solid var(--line);
-    padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+    padding:14px;overflow-y:hidden;display:flex;flex-direction:column;gap:14px;height:calc(100vh - 52px);}
 
   /* Zoom controls and Canvas wrapping styles */
   #zoomControls {
@@ -201,7 +201,7 @@
   #edgeTable td{padding:4px 3px;border-bottom:1px solid var(--line);cursor:pointer;}
   #edgeTable tr:hover td{background:#101913;}
   #edgeTable tr.sel td{background:#182a1c;color:var(--green);}
-  #edgeTableWrap{max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:6px;}
+  #edgeTableWrap{flex:1;overflow-y:auto;border:1px solid var(--line);border-radius:6px;min-height:100px;}
   /* Keep the edge count immediately after the title */
   #right .block > h2{display:flex;justify-content:flex-start;align-items:center;gap:8px}
   #edgeCountLabel{color:var(--text);font-size:12px}
@@ -551,6 +551,28 @@
 
     #app.tab-results #right {
       display: flex !important;
+      height: auto !important;
+      overflow-y: auto !important;
+    }
+    #app.tab-results #right #blockSummary,
+    #app.tab-results #right #blockEdgeTable {
+      display: block !important;
+    }
+    #app.tab-results #right #blockLog {
+      display: none !important;
+    }
+
+    #app.tab-log #right {
+      display: flex !important;
+      height: auto !important;
+      overflow-y: auto !important;
+    }
+    #app.tab-log #right #blockSummary,
+    #app.tab-log #right #blockEdgeTable {
+      display: none !important;
+    }
+    #app.tab-log #right #blockLog {
+      display: block !important;
     }
 
     /* Style improvements for image item delete button */

@@ -34,6 +34,7 @@
     <button id="tabMobView" data-i18n="tabMobileView">תצוגה</button>
     <button id="tabMobEdit" data-i18n="tabMobileEdit">עריכה</button>
     <button id="tabMobResults" data-i18n="tabMobileResults">תוצאות</button>
+    <button id="tabMobLog" data-i18n="tabMobileLog">לוג</button>
   </nav>
 
   <!-- Guided Tour Elements -->
@@ -59,6 +60,11 @@
       <h2 data-i18n="lblImages">1. תמונות</h2>
       <input type="file" id="fileInput" accept="image/*,.pptx" multiple>
       <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
+      <div class="row" style="margin-top:8px; gap:6px;">
+        <button id="btnSaveSession" style="flex:1;" data-i18n="btnSaveSession">שמור סשן 💾</button>
+        <button id="btnLoadSession" style="flex:1;" data-i18n="btnLoadSession">טען סשן 📂</button>
+      </div>
+      <input type="file" id="sessionFileInput" accept=".json,.tjsession" style="display:none;">
       <div id="imgList" style="margin-top:10px;"></div>
     </div>
 
@@ -360,7 +366,7 @@
 
   <!-- RIGHT: stats, edge table, log -->
   <div id="right">
-    <div class="block">
+    <div class="block" id="blockSummary">
       <h2 data-i18n="lblCurrentSummary">סיכום תמונה נוכחית</h2>
       <div class="stat"><span data-i18n="lblNodes">צמתים</span><b id="statNodes">0</b></div>
       <div class="stat"><span data-i18n="lblEdges">דפנות</span><b id="statEdges">0</b></div>
@@ -375,7 +381,7 @@
       </div>
     </div>
 
-    <div class="block" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+    <div class="block" id="blockEdgeTable" style="flex:1;display:flex;flex-direction:column;min-height:0;">
       <h2><span data-i18n="lblEdgeTable">טבלת דפנות</span><span id="edgeCountLabel" style="font-weight:600; margin-left:8px;">(N=0)</span></h2>
       <div id="edgeTableWrap">
         <table id="edgeTable">
@@ -385,7 +391,7 @@
       </div>
     </div>
 
-    <div class="block">
+    <div class="block" id="blockLog">
       <h2 data-i18n="lblLog">לוג</h2>
       <div id="log"></div>
     </div>

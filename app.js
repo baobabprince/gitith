@@ -3083,7 +3083,6 @@ els.modeSelect.onclick = ()=> setMode('select');
 els.modeAddNode.onclick = ()=> setMode('addnode');
 els.modeRemoveNode.onclick = ()=> setMode('removenode');
 els.modeRedraw.onclick = ()=>{
-  if(!state.selectedEdge){ log(`<span style="color:#ff6b6b">${getI18nStr('errSelectEdgeFirst')}</span>`); setMode('select'); return; }
   setMode('redraw');
   state.redraw.active = true; state.redraw.points = [];
   els.redrawControls.style.display='flex';
@@ -3096,17 +3095,89 @@ function cancelRedrawMode(silent){
 els.cancelRedraw.onclick = ()=>{ cancelRedrawMode(); drawOverlay(); setMode('select'); log(getI18nStr('logManualRedrawCancel')); };
 els.finishRedraw.onclick = ()=>{
   const rec = activeImg(); if(!rec) return;
-  const edge = rec.edges.find(e=>e.id===state.selectedEdge);
-  if(!edge || state.redraw.points.length<2){ log(`<span style="color:#ff6b6b">${getI18nStr('errDrawMinPoints')}</span>`); return; }
-  const n1 = rec.nodes.find(n=>n.id===edge.n1);
-  const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
-  const newPath = [[n1.x,n1.y], ...state.redraw.points, n2? [n2.x,n2.y] : state.redraw.points[state.redraw.points.length-1]];
-  edge.path = newPath;
-  edge.length = pathLength(newPath);
-  edge.manual = true;
-  edge.straight = n2 ? dist(n1.x,n1.y,n2.x,n2.y) : dist(n1.x,n1.y, newPath[newPath.length-1][0], newPath[newPath.length-1][1]);
-  edge.ratio = edge.straight > 0 ? edge.length / edge.straight : NaN;
-  log(getI18nStr('logManualRedrawSuccess', {id: edge.id, len: edge.length.toFixed(1), ratio: edge.ratio.toFixed(3)}));
+  if(state.redraw.points.length<2){ log(`<span style="color:#ff6b6b">${getI18nStr('errDrawMinPoints')}</span>`); return; }
+
+  const pFirst = state.redraw.points[0];
+  const pLast = state.redraw.points[state.redraw.points.length-1];
+
+  // 1. Find or create n1_node (first point snapping, 15px radius)
+  let n1_node = null;
+  let bestDist1 = 15;
+  rec.nodes.forEach(n => {
+    const d = dist(n.x, n.y, pFirst[0], pFirst[1]);
+    if (d < bestDist1) {
+      bestDist1 = d;
+      n1_node = n;
+    }
+  });
+  if (!n1_node) {
+    n1_node = { id: 'n' + (rec.nextNodeId++), x: pFirst[0], y: pFirst[1], pixels: [] };
+    rec.nodes.push(n1_node);
+  }
+
+  // 2. Find or create n2_node (last point snapping, 15px radius, excluding n1_node)
+  let n2_node = null;
+  let bestDist2 = 15;
+  rec.nodes.forEach(n => {
+    if (n.id === n1_node.id) return;
+    const d = dist(n.x, n.y, pLast[0], pLast[1]);
+    if (d < bestDist2) {
+      bestDist2 = d;
+      n2_node = n;
+    }
+  });
+
+  const incomplete = !n2_node;
+
+  // 3. Build final path
+  const finalPath = [];
+  finalPath.push([n1_node.x, n1_node.y]);
+  for (let i = 1; i < state.redraw.points.length - 1; i++) {
+    finalPath.push(state.redraw.points[i]);
+  }
+  if (n2_node) {
+    finalPath.push([n2_node.x, n2_node.y]);
+  } else {
+    finalPath.push([pLast[0], pLast[1]]);
+  }
+
+  const length = pathLength(finalPath);
+  const straight = n2_node ? dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y) : dist(n1_node.x, n1_node.y, pLast[0], pLast[1]);
+  const ratio = straight > 0 ? length / straight : NaN;
+
+  if (state.selectedEdge) {
+    const edge = rec.edges.find(e=>e.id===state.selectedEdge);
+    if (edge) {
+      edge.n1 = n1_node.id;
+      edge.n2 = n2_node ? n2_node.id : null;
+      edge.path = finalPath;
+      edge.length = length;
+      edge.straight = straight;
+      edge.ratio = ratio;
+      edge.manual = true;
+      edge.incomplete = incomplete;
+      edge.includeInStats = !incomplete;
+      log(getI18nStr('logManualRedrawSuccess', {id: edge.id, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
+    }
+  } else {
+    const edgeId = 'e' + (rec.nextEdgeId++);
+    const newEdge = {
+      id: edgeId,
+      n1: n1_node.id,
+      n2: n2_node ? n2_node.id : null,
+      path: finalPath,
+      length: length,
+      straight: straight,
+      ratio: ratio,
+      manual: true,
+      incomplete: incomplete,
+      includeInStats: !incomplete
+    };
+    rec.edges.push(newEdge);
+    state.selectedEdge = edgeId;
+    log(getI18nStr('logManualDrawNewSuccess', {id: edgeId, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
+  }
+
   cancelRedrawMode(); setMode('select');
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 };

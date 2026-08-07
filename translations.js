@@ -97,7 +97,7 @@ const translations = {
     hintSelect: "מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.",
     hintAddNode: "מצב <b>הוספת צומת</b>: לחצו על נקודה על גבי דופן קיימת כדי לפצל אותה לשתי דפנות בנקודה זו.",
     hintRemoveNode: "מצב <b>הסרת צומת</b>: לחצו על צומת (עיגול צהוב) כדי להסירה. אם יש לה 2 דפנות — הן יתמזגו לדופן אחת.",
-    hintRedraw: "מצב <b>ציור דופן</b>: לחצו על נקודות על גבי התמונה כדי לסמן את מסלול הדופן. אם בחרתם קודם דופן בטבלה היא תצויר מחדש; אחרת תיווצר דופן חדשה מאפס. לחצו \"סיים ציור\" בסיום.",
+    hintRedraw: "מצב <b>ציור דופן</b>: לחצו על נקודות על גבי התמונה כדי לסמן את מסלול הדופן מאפס או כחיבור בין צמתים. בסיום לחצו על \"סיים ציור\".",
     // New controls for open edges
     lblIncludeIncomplete: "כלול דפנות לא שלמות בסטטיסטיקה",
     lblOpenEdgeRadius: "רדיוס חיבור אוטומטי של קצוות (px):",
@@ -279,7 +279,7 @@ const translations = {
     hintSelect: "<b>Select</b> mode: Clicking a boundary highlights it and displays its metrics in the right table.",
     hintAddNode: "<b>Add Junction</b> mode: Click on any existing boundary to split it into two separate boundaries at that point.",
     hintRemoveNode: "<b>Remove Junction</b> mode: Click on a junction (yellow circle) to remove it. If it connects exactly two boundaries, they will merge into one.",
-    hintRedraw: "<b>Draw Boundary</b> mode: Click points on the image to sketch the boundary. If a boundary is selected, it will be redrawn; otherwise a new one is created from scratch. Click 'Finish Drawing' when done.",
+    hintRedraw: "<b>Draw Boundary</b> mode: Click points on the image to sketch the boundary path from scratch or connecting existing junctions. Click 'Finish Drawing' when done.",
     // New controls for open edges
     lblIncludeIncomplete: "Include incomplete boundaries in statistics",
     lblOpenEdgeRadius: "Auto-connect Open Edges Radius (px):",
@@ -461,7 +461,7 @@ const translations = {
     hintSelect: "وضع <b>التحديد</b>: النقر على حد يبرزه ويعرض مقاييسه في الجدول الأيمن.",
     hintAddNode: "وضع <b>إضافة موصل</b>: انقر على أي حد موجود لتقسيمه إلى حدين منفصلين عند تلك النقطة.",
     hintRemoveNode: "وضع <b>إزالة موصل</b>: انقر على موصل (دائرة صفراء) لإزالته. إذا كان يربط بين حدين بالضبط، فسيتم دمجها في حد واحد.",
-    hintRedraw: "وضع <b>رسم الحد</b>: انقر على نقاط في الصورة لرسم مسار الحد. إذا تم اختيار حد مسبقًا، فسيتم إعادة رسمه؛ وإلا سيتم إنشاء حد جديد بالكامل. انقر على 'إنهاء الرسم' عند الانتهاء.",
+    hintRedraw: "وضع <b>رسم الحد</b>: انقر على نقاط في الصورة لرسم مسار الحد من الصفر أو لتوصيل الموصلات. انقر على 'إنهاء الرسم' عند الانتهاء.",
     // New controls for open edges
     lblIncludeIncomplete: "تضمين الحدود غير المكتملة في الإحصاءات",
     lblOpenEdgeRadius: "نطاق التوصيل التلقائي للأطراف المفتوحة (بكسل):",

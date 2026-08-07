@@ -3069,6 +3069,12 @@ function setMode(mode){
   [els.modeSelect,els.modeAddNode,els.modeRemoveNode,els.modeRedraw].forEach(b=>b.classList.remove('active-mode'));
   ({select:els.modeSelect, addnode:els.modeAddNode, removenode:els.modeRemoveNode, redraw:els.modeRedraw})[mode].classList.add('active-mode');
 
+  if (mode === 'redraw') {
+    state.selectedEdge = null;
+    renderEdgeTable();
+    drawOverlay();
+  }
+
   const modeKeyMap = {
     select: 'hintSelect',
     addnode: 'hintAddNode',
@@ -3126,57 +3132,40 @@ els.finishRedraw.onclick = ()=>{
       n2_node = n;
     }
   });
+  if (!n2_node) {
+    n2_node = { id: 'n' + (rec.nextNodeId++), x: pLast[0], y: pLast[1], pixels: [] };
+    rec.nodes.push(n2_node);
+  }
 
-  const incomplete = !n2_node;
-
-  // 3. Build final path
+  // 3. Build final path (manually drawn boundaries are always complete and stand on their own)
   const finalPath = [];
   finalPath.push([n1_node.x, n1_node.y]);
   for (let i = 1; i < state.redraw.points.length - 1; i++) {
     finalPath.push(state.redraw.points[i]);
   }
-  if (n2_node) {
-    finalPath.push([n2_node.x, n2_node.y]);
-  } else {
-    finalPath.push([pLast[0], pLast[1]]);
-  }
+  finalPath.push([n2_node.x, n2_node.y]);
 
   const length = pathLength(finalPath);
-  const straight = n2_node ? dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y) : dist(n1_node.x, n1_node.y, pLast[0], pLast[1]);
+  const straight = dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y);
   const ratio = straight > 0 ? length / straight : NaN;
 
-  if (state.selectedEdge) {
-    const edge = rec.edges.find(e=>e.id===state.selectedEdge);
-    if (edge) {
-      edge.n1 = n1_node.id;
-      edge.n2 = n2_node ? n2_node.id : null;
-      edge.path = finalPath;
-      edge.length = length;
-      edge.straight = straight;
-      edge.ratio = ratio;
-      edge.manual = true;
-      edge.incomplete = incomplete;
-      edge.includeInStats = !incomplete;
-      log(getI18nStr('logManualRedrawSuccess', {id: edge.id, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
-    }
-  } else {
-    const edgeId = 'e' + (rec.nextEdgeId++);
-    const newEdge = {
-      id: edgeId,
-      n1: n1_node.id,
-      n2: n2_node ? n2_node.id : null,
-      path: finalPath,
-      length: length,
-      straight: straight,
-      ratio: ratio,
-      manual: true,
-      incomplete: incomplete,
-      includeInStats: !incomplete
-    };
-    rec.edges.push(newEdge);
-    state.selectedEdge = edgeId;
-    log(getI18nStr('logManualDrawNewSuccess', {id: edgeId, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
-  }
+  // Always draw a new boundary from scratch
+  const edgeId = 'e' + (rec.nextEdgeId++);
+  const newEdge = {
+    id: edgeId,
+    n1: n1_node.id,
+    n2: n2_node.id,
+    path: finalPath,
+    length: length,
+    straight: straight,
+    ratio: ratio,
+    manual: true,
+    incomplete: false,
+    includeInStats: true
+  };
+  rec.edges.push(newEdge);
+  state.selectedEdge = edgeId;
+  log(getI18nStr('logManualDrawNewSuccess', {id: edgeId, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
 
   cancelRedrawMode(); setMode('select');
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();

@@ -51,7 +51,7 @@ const translations = {
     tourTitle3: "שלב 3: זיהוי צמתים ובניית גרף",
     tourDesc3: "הריצו <b>'זיהוי מלא'</b> כדי לגלות אוטומטית את הצמתים והדפנות שלכם, או השתמשו ב-Gemini API לזיהוי ויזואלי מתקדם.",
     tourTitle4: "שלב 4: עריכה ידנית ותיקונים",
-    tourDesc4: "כאן תוכלו לתקן את הגרף בדיוק מושלם: ציירו דפנות מאפס או בחרו דופן וסמנו נקודות לציור מחדש, פצלו דפנות ע\"י הוספת צמתים, או מחקו צמתי סרק.",
+    tourDesc4: "כאן תוכלו לתקן את הגרף בדיוק מושלם: ציירו דפנות מאפס, פצלו דפנות ע\"י הוספת צמתים, או מחקו צמתי סרק.",
     tourTitle5: "שלב 5: סטטיסטיקה וייצוא נתונים",
     tourDesc5: "קבלו סיכום של פיתולי הדפנות בזמן אמת, והורידו דוחות CSV מפורטים לעבודה שלכם. תהנו!",
     // Labels
@@ -102,6 +102,7 @@ const translations = {
     lblIncludeIncomplete: "כלול דפנות לא שלמות בסטטיסטיקה",
     lblOpenEdgeRadius: "רדיוס חיבור אוטומטי של קצוות (px):",
     btnConnectOpen: "חבר קצוות פתוחים",
+    lblSnapToJunctions: "הצמד לצמתים קרובים (15px)",
     // Logs and dialogs
     logReady: "הכלי מוכן. טענו תמונה כדי להתחיל.",
     logLoaded: "נטענה תמונה <b>{name}</b> ({w}×{h}px)",
@@ -119,7 +120,7 @@ const translations = {
     logAutoConnectGemini: "חיבור אוטומטי חכם (Gemini): חוברו {count} קצוות פתוחים לצמתים סמוכים",
     logManualEdgeDelete: "דופן {id} נמחקה ידנית",
     logManualRedrawCancel: "ציור דופן בוטל",
-    logManualRedrawSuccess: "דופן {id} צוירה מחדש ידנית — אורך חדש {len}px, יחס חדש {ratio}",
+    logManualRedrawSuccess: "דופן {id} צוירה ידנית — אורך {len}px, יחס {ratio}",
     logManualDrawNewSuccess: "דופן {id} חדשה צוירה ידנית — אורך {len}px, יחס {ratio}",
     logManualNodeAdd: "נוסף צומת {nodeId} ידנית — דופן {edgeId} פוצלה ל-{e1} ו-{e2}",
     logManualNodeRemoveMerge: "צומת {nodeId} הוסר — דפנות מוזגו לדופן חדשה {edgeId}",
@@ -233,7 +234,7 @@ const translations = {
     tourTitle3: "Step 3: Junction Detection & Graph",
     tourDesc3: "Click <b>'Run Full Detection'</b> to automatically trace junctions and edges, or use the Gemini API for advanced visual detection.",
     tourTitle4: "Step 4: Manual Editing",
-    tourDesc4: "Correct the graph with pixel-perfect accuracy here: select an edge, click points to redraw, split boundaries by adding junctions, or delete spurious nodes.",
+    tourDesc4: "Correct the graph with pixel-perfect accuracy here: draw boundaries from scratch, split boundaries by adding junctions, or delete spurious nodes.",
     tourTitle5: "Step 5: Stats & Data Export",
     tourDesc5: "View instant undulation metrics and download comprehensive CSV files for your analytical work. Enjoy!",
     // Labels
@@ -284,6 +285,7 @@ const translations = {
     lblIncludeIncomplete: "Include incomplete boundaries in statistics",
     lblOpenEdgeRadius: "Auto-connect Open Edges Radius (px):",
     btnConnectOpen: "Connect Open Edges",
+    lblSnapToJunctions: "Snap to nearby junctions (15px)",
     // Logs and dialogs
     logReady: "Tool is ready. Load an image to start.",
     logLoaded: "Loaded image <b>{name}</b> ({w}×{h}px)",
@@ -301,7 +303,7 @@ const translations = {
     logAutoConnectGemini: "Smart Auto-connect (Gemini): Connected {count} open edges to nearby junctions",
     logManualEdgeDelete: "Boundary {id} deleted manually",
     logManualRedrawCancel: "Drawing canceled",
-    logManualRedrawSuccess: "Boundary {id} redrawn manually — new length {len}px, new ratio {ratio}",
+    logManualRedrawSuccess: "Boundary {id} drawn manually — length {len}px, ratio {ratio}",
     logManualDrawNewSuccess: "New boundary {id} drawn manually — length {len}px, ratio {ratio}",
     logManualNodeAdd: "Added junction {nodeId} manually — split boundary {edgeId} into {e1} and {e2}",
     logManualNodeRemoveMerge: "Removed junction {nodeId} — merged boundaries into new boundary {edgeId}",
@@ -415,7 +417,7 @@ const translations = {
     tourTitle3: "الخطوة ٣: كشف الموصلات والرسم البياني",
     tourDesc3: "انقر على <b>'تشغيل الكشف الكامل'</b> لتتبع الموصلات والحدود تلقائيًا، أو استخدم واجهة Gemini الرائعة للكشف البصري المتقدم.",
     tourTitle4: "الخطوة ٤: التحرير اليدوي",
-    tourDesc4: "قم بتصحيح الرسم البياني بدقة متناهية هنا: حدد الحد، وانقر على نقاط لإعادة الرسم، أو قم بتقسيم الحدود بإضافة موصلات، أو احذف العقد الزائفة.",
+    tourDesc4: "قم بتصحيح الرسم البياني بدقة متناهية هنا: ارسم الحدود من الصفر، أو قم بتقسيم الحدود بإضافة موصلات، أو احذف العقد الزائفة.",
     tourTitle5: "الخطوة ٥: الإحصائيات وتصدير البيانات",
     tourDesc5: "اعرض مقاييس التموج الفورية وقم بتنزيل ملفات CSV الشاملة لعملك التحليلي. استمتع!",
     // Labels
@@ -466,6 +468,7 @@ const translations = {
     lblIncludeIncomplete: "تضمين الحدود غير المكتملة في الإحصاءات",
     lblOpenEdgeRadius: "نطاق التوصيل التلقائي للأطراف المفتوحة (بكسل):",
     btnConnectOpen: "توصيل الأطراف المفتوحة",
+    lblSnapToJunctions: "محاذاة إلى الموصلات القريبة (15px)",
     // Logs and dialogs
     logReady: "الأداة جاهزة. قم بتحميل صورة للبدء.",
     logLoaded: "تم تحميل الصورة <b>{name}</b> ({w}×{h} بكسل)",
@@ -483,7 +486,7 @@ const translations = {
     logAutoConnectGemini: "توصيل تلقائي ذكي (Gemini): تم توصيل {count} من الحدود المفتوحة بالموصلات القريبة",
     logManualEdgeDelete: "تم حذف الحد {id} يدويًا",
     logManualRedrawCancel: "تم إلغاء رسم الحد",
-    logManualRedrawSuccess: "تم إعادة رسم الحد {id} يدويًا — الطول الجديد {len} بكسل، والنسبة الجديدة {ratio}",
+    logManualRedrawSuccess: "تم رسم الحد {id} يدويًا — الطول {len} بكسل، والنسبة {ratio}",
     logManualDrawNewSuccess: "تم رسم حد جديد {id} يدويًا — الطول {len} بكسل، والنسبة {ratio}",
     logManualNodeAdd: "تم إضافة موصل {nodeId} يدويًا — تم تقسيم الحد {edgeId} إلى {e1} و{e2}",
     logManualNodeRemoveMerge: "تم إزالة الموصل {nodeId} — تم دمج الحدود في الحد الجديد {edgeId}",

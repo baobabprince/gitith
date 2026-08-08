@@ -3106,16 +3106,21 @@ els.finishRedraw.onclick = ()=>{
   const pFirst = state.redraw.points[0];
   const pLast = state.redraw.points[state.redraw.points.length-1];
 
+  const snapChk = document.getElementById('chkSnapToJunctions');
+  const snapEnabled = snapChk ? snapChk.checked : true;
+
   // 1. Find or create n1_node (first point snapping, 15px radius)
   let n1_node = null;
-  let bestDist1 = 15;
-  rec.nodes.forEach(n => {
-    const d = dist(n.x, n.y, pFirst[0], pFirst[1]);
-    if (d < bestDist1) {
-      bestDist1 = d;
-      n1_node = n;
-    }
-  });
+  if (snapEnabled) {
+    let bestDist1 = 15;
+    rec.nodes.forEach(n => {
+      const d = dist(n.x, n.y, pFirst[0], pFirst[1]);
+      if (d < bestDist1) {
+        bestDist1 = d;
+        n1_node = n;
+      }
+    });
+  }
   if (!n1_node) {
     n1_node = { id: 'n' + (rec.nextNodeId++), x: pFirst[0], y: pFirst[1], pixels: [] };
     rec.nodes.push(n1_node);
@@ -3123,15 +3128,17 @@ els.finishRedraw.onclick = ()=>{
 
   // 2. Find or create n2_node (last point snapping, 15px radius, excluding n1_node)
   let n2_node = null;
-  let bestDist2 = 15;
-  rec.nodes.forEach(n => {
-    if (n.id === n1_node.id) return;
-    const d = dist(n.x, n.y, pLast[0], pLast[1]);
-    if (d < bestDist2) {
-      bestDist2 = d;
-      n2_node = n;
-    }
-  });
+  if (snapEnabled) {
+    let bestDist2 = 15;
+    rec.nodes.forEach(n => {
+      if (n.id === n1_node.id) return;
+      const d = dist(n.x, n.y, pLast[0], pLast[1]);
+      if (d < bestDist2) {
+        bestDist2 = d;
+        n2_node = n;
+      }
+    });
+  }
   if (!n2_node) {
     n2_node = { id: 'n' + (rec.nextNodeId++), x: pLast[0], y: pLast[1], pixels: [] };
     rec.nodes.push(n2_node);

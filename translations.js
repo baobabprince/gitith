@@ -51,7 +51,7 @@ const translations = {
     tourTitle3: "שלב 3: זיהוי צמתים ובניית גרף",
     tourDesc3: "הריצו <b>'זיהוי מלא'</b> כדי לגלות אוטומטית את הצמתים והדפנות שלכם, או השתמשו ב-Gemini API לזיהוי ויזואלי מתקדם.",
     tourTitle4: "שלב 4: עריכה ידנית ותיקונים",
-    tourDesc4: "כאן תוכלו לתקן את הגרף בדיוק מושלם: ציירו דפנות מאפס או בחרו דופן וסמנו נקודות לציור מחדש, פצלו דפנות ע\"י הוספת צמתים, או מחקו צמתי סרק.",
+    tourDesc4: "כאן תוכלו לתקן את הגרף בדיוק מושלם: ציירו דפנות מאפס (עם או בלי הצמדה אוטומטית לצמתים קיימים), פצלו דפנות ע\"י הוספת צמתים, או מחקו צמתי סרק.",
     tourTitle5: "שלב 5: סטטיסטיקה וייצוא נתונים",
     tourDesc5: "קבלו סיכום של פיתולי הדפנות בזמן אמת, והורידו דוחות CSV מפורטים לעבודה שלכם. תהנו!",
     // Labels
@@ -84,6 +84,7 @@ const translations = {
     lblGeminiKey: "מפתח Gemini API (Google AI Studio)",
     lblGeminiModel: "מודל",
     lblManualEdit: "4. עריכה ידנית",
+    lblSnapToJunctions: "הצמד לצמתים קיימים",
     lblCurrentSummary: "סיכום תמונה נוכחית",
     lblNodes: "צמתים",
     lblEdges: "דפנות",
@@ -97,7 +98,7 @@ const translations = {
     hintSelect: "מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.",
     hintAddNode: "מצב <b>הוספת צומת</b>: לחצו על נקודה על גבי דופן קיימת כדי לפצל אותה לשתי דפנות בנקודה זו.",
     hintRemoveNode: "מצב <b>הסרת צומת</b>: לחצו על צומת (עיגול צהוב) כדי להסירה. אם יש לה 2 דפנות — הן יתמזגו לדופן אחת.",
-    hintRedraw: "מצב <b>ציור דופן</b>: לחצו על נקודות על גבי התמונה כדי לסמן את מסלול הדופן מאפס או כחיבור בין צמתים. בסיום לחצו על \"סיים ציור\".",
+    hintRedraw: "מצב <b>ציור דופן</b>: לחצו על נקודות על גבי התמונה כדי לסמן את מסלול הדופן מאפס. ניתן לשלוט בהצמדה לצמתים קרובים בעזרת תיבת הסימון. בסיום לחצו על \"סיים ציור\".",
     // New controls for open edges
     lblIncludeIncomplete: "כלול דפנות לא שלמות בסטטיסטיקה",
     lblOpenEdgeRadius: "רדיוס חיבור אוטומטי של קצוות (px):",
@@ -233,7 +234,7 @@ const translations = {
     tourTitle3: "Step 3: Junction Detection & Graph",
     tourDesc3: "Click <b>'Run Full Detection'</b> to automatically trace junctions and edges, or use the Gemini API for advanced visual detection.",
     tourTitle4: "Step 4: Manual Editing",
-    tourDesc4: "Correct the graph with pixel-perfect accuracy here: select an edge, click points to redraw, split boundaries by adding junctions, or delete spurious nodes.",
+    tourDesc4: "Correct the graph with pixel-perfect accuracy here: draw boundaries from scratch (with or without auto-snapping to existing junctions), split boundaries by adding junctions, or delete spurious nodes.",
     tourTitle5: "Step 5: Stats & Data Export",
     tourDesc5: "View instant undulation metrics and download comprehensive CSV files for your analytical work. Enjoy!",
     // Labels
@@ -266,6 +267,7 @@ const translations = {
     lblGeminiKey: "Gemini API Key (Google AI Studio)",
     lblGeminiModel: "Model",
     lblManualEdit: "4. Manual Editing",
+    lblSnapToJunctions: "Snap to existing junctions",
     lblCurrentSummary: "Current Image Summary",
     lblNodes: "Junctions",
     lblEdges: "Boundaries",
@@ -279,7 +281,7 @@ const translations = {
     hintSelect: "<b>Select</b> mode: Clicking a boundary highlights it and displays its metrics in the right table.",
     hintAddNode: "<b>Add Junction</b> mode: Click on any existing boundary to split it into two separate boundaries at that point.",
     hintRemoveNode: "<b>Remove Junction</b> mode: Click on a junction (yellow circle) to remove it. If it connects exactly two boundaries, they will merge into one.",
-    hintRedraw: "<b>Draw Boundary</b> mode: Click points on the image to sketch the boundary path from scratch or connecting existing junctions. Click 'Finish Drawing' when done.",
+    hintRedraw: "<b>Draw Boundary</b> mode: Click points on the image to sketch the boundary path from scratch. Toggle snapping to nearby junctions using the checkbox. Click 'Finish Drawing' when done.",
     // New controls for open edges
     lblIncludeIncomplete: "Include incomplete boundaries in statistics",
     lblOpenEdgeRadius: "Auto-connect Open Edges Radius (px):",
@@ -415,7 +417,7 @@ const translations = {
     tourTitle3: "الخطوة ٣: كشف الموصلات والرسم البياني",
     tourDesc3: "انقر على <b>'تشغيل الكشف الكامل'</b> لتتبع الموصلات والحدود تلقائيًا، أو استخدم واجهة Gemini الرائعة للكشف البصري المتقدم.",
     tourTitle4: "الخطوة ٤: التحرير اليدوي",
-    tourDesc4: "قم بتصحيح الرسم البياني بدقة متناهية هنا: حدد الحد، وانقر على نقاط لإعادة الرسم، أو قم بتقسيم الحدود بإضافة موصلات، أو احذف العقد الزائفة.",
+    tourDesc4: "قم بتصحيح الرسم البياني بدقة متناهية هنا: ارسم الحدود من الصفر (مع أو بدون المحاذاة التلقائية للموصلات الموجودة)، أو قم بتقسيم الحدود بإضافة موصلات، أو احذف العقد الزائفة.",
     tourTitle5: "الخطوة ٥: الإحصائيات وتصدير البيانات",
     tourDesc5: "اعرض مقاييس التموج الفورية وقم بتنزيل ملفات CSV الشاملة لعملك التحليلي. استمتع!",
     // Labels
@@ -448,6 +450,7 @@ const translations = {
     lblGeminiKey: "مفتاح واجهة Gemini (Google AI Studio)",
     lblGeminiModel: "النموذج",
     lblManualEdit: "٤. التحرير اليدوي",
+    lblSnapToJunctions: "محاذاة إلى الموصلات الموجودة",
     lblCurrentSummary: "ملخص الصورة الحالية",
     lblNodes: "الموصلات",
     lblEdges: "الحدود",
@@ -461,7 +464,7 @@ const translations = {
     hintSelect: "وضع <b>التحديد</b>: النقر على حد يبرزه ويعرض مقاييسه في الجدول الأيمن.",
     hintAddNode: "وضع <b>إضافة موصل</b>: انقر على أي حد موجود لتقسيمه إلى حدين منفصلين عند تلك النقطة.",
     hintRemoveNode: "وضع <b>إزالة موصل</b>: انقر على موصل (دائرة صفراء) لإزالته. إذا كان يربط بين حدين بالضبط، فسيتم دمجها في حد واحد.",
-    hintRedraw: "وضع <b>رسم الحد</b>: انقر على نقاط في الصورة لرسم مسار الحد من الصفر أو لتوصيل الموصلات. انقر على 'إنهاء الرسم' عند الانتهاء.",
+    hintRedraw: "وضع <b>رسم الحد</b>: انقر على نقاط في الصورة لرسم مسار الحد من الصفر. يمكنك التحكم في المحاذاة للموصلات القريبة باستخدام مربع الاختيار. انقر على 'إنهاء الرسم' عند الانتهاء.",
     // New controls for open edges
     lblIncludeIncomplete: "تضمين الحدود غير المكتملة في الإحصاءات",
     lblOpenEdgeRadius: "نطاق التوصيل التلقائي للأطراف المفتوحة (بكسل):",

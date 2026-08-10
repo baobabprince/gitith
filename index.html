@@ -356,9 +356,13 @@
         <button id="modeRemoveNode" data-i18n="modeRemoveNode">הסרת צומת</button>
         <button id="modeRedraw" data-i18n="modeRedraw">ציור דופן</button>
       </div>
-      <div id="redrawControls" class="row" style="display:none;">
+      <div id="redrawControls" class="row" style="display:none; align-items:center; gap:10px; margin-bottom:8px;">
         <button id="finishRedraw" class="primary" data-i18n="finishRedraw">סיים ציור</button>
         <button id="cancelRedraw" data-i18n="cancelRedraw">בטל</button>
+        <label class="small" style="display:inline-flex; align-items:center; gap:4px; margin:0; cursor:pointer;">
+          <input type="checkbox" id="chkSnapToJunctions" checked>
+          <span data-i18n="lblSnapToJunctions">הצמד לצמתים קרובים</span>
+        </label>
       </div>
       <div class="hint" id="modeHint" data-i18n="hintSelect">
         מצב <b>בחירה</b>: לחיצה על דופן מדגישה אותה ומציגה נתונים בטבלה מימין.

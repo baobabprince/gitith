@@ -147,7 +147,7 @@ const state = {
   activeId: null,
   mode: 'select',
   selectedEdge: null,
-  redraw: {active:false, points:[]},
+  redraw: {active:false, points:[], mouseX: null, mouseY: null, snapNode: null},
   showBinary: false,
   hideAllMarks: false,
   pyodideLoading: false,
@@ -2837,15 +2837,57 @@ function drawOverlay(){
     ovCtx.strokeStyle = '#3a2c00'; ovCtx.lineWidth=1; ovCtx.stroke();
   });
   // redraw preview
-  if(state.redraw.active && state.redraw.points.length){
-    ovCtx.beginPath();
-    state.redraw.points.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
-    ovCtx.strokeStyle = '#ff4dd8'; ovCtx.lineWidth=2; ovCtx.setLineDash([2,2]);
-    ovCtx.stroke(); ovCtx.setLineDash([]);
-    state.redraw.points.forEach(p=>{
-      ovCtx.beginPath(); ovCtx.arc(p[0],p[1],2.5,0,Math.PI*2);
-      ovCtx.fillStyle='#ff4dd8'; ovCtx.fill();
-    });
+  if(state.redraw.active){
+    // Draw existing points and line segments
+    if (state.redraw.points.length > 0) {
+      ovCtx.beginPath();
+      state.redraw.points.forEach((p,i)=> i===0? ovCtx.moveTo(p[0],p[1]) : ovCtx.lineTo(p[0],p[1]));
+      ovCtx.strokeStyle = '#ff4dd8'; ovCtx.lineWidth=2; ovCtx.setLineDash([2,2]);
+      ovCtx.stroke(); ovCtx.setLineDash([]);
+      state.redraw.points.forEach(p=>{
+        ovCtx.beginPath(); ovCtx.arc(p[0],p[1],2.5,0,Math.PI*2);
+        ovCtx.fillStyle='#ff4dd8'; ovCtx.fill();
+      });
+    }
+
+    // Draw live preview segment from last point to current cursor position (or snapped node)
+    let targetX = state.redraw.mouseX;
+    let targetY = state.redraw.mouseY;
+    if (state.redraw.snapNode) {
+      targetX = state.redraw.snapNode.x;
+      targetY = state.redraw.snapNode.y;
+    }
+
+    if (targetX !== null && targetY !== null) {
+      // If there are existing points, connect the last one to the target
+      if (state.redraw.points.length > 0) {
+        const lastPt = state.redraw.points[state.redraw.points.length - 1];
+        ovCtx.beginPath();
+        ovCtx.moveTo(lastPt[0], lastPt[1]);
+        ovCtx.lineTo(targetX, targetY);
+        ovCtx.strokeStyle = '#ff4dd8'; ovCtx.lineWidth = 2;
+        ovCtx.setLineDash([4, 4]);
+        ovCtx.stroke();
+        ovCtx.setLineDash([]);
+      }
+
+      // Draw cursor / target preview point
+      ovCtx.beginPath();
+      ovCtx.arc(targetX, targetY, 3, 0, Math.PI * 2);
+      ovCtx.fillStyle = '#ff4dd8';
+      ovCtx.fill();
+
+      // If snapped to a junction, draw an outer highlight circle around it
+      if (state.redraw.snapNode) {
+        ovCtx.beginPath();
+        ovCtx.arc(state.redraw.snapNode.x, state.redraw.snapNode.y, 10, 0, Math.PI * 2);
+        ovCtx.strokeStyle = '#ff4dd8';
+        ovCtx.lineWidth = 2;
+        ovCtx.stroke();
+        ovCtx.fillStyle = 'rgba(255, 77, 216, 0.2)';
+        ovCtx.fill();
+      }
+    }
   }
 
   if (state.samProcessing) {
@@ -3097,6 +3139,7 @@ els.modeRedraw.onclick = ()=>{
 
 function cancelRedrawMode(silent){
   state.redraw.active=false; state.redraw.points=[];
+  state.redraw.mouseX=null; state.redraw.mouseY=null; state.redraw.snapNode=null;
   if(!silent) drawOverlay();
 }
 els.cancelRedraw.onclick = ()=>{ cancelRedrawMode(); drawOverlay(); setMode('select'); log(getI18nStr('logManualRedrawCancel')); };
@@ -3174,7 +3217,8 @@ els.finishRedraw.onclick = ()=>{
   state.selectedEdge = edgeId;
   log(getI18nStr('logManualDrawNewSuccess', {id: edgeId, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
 
-  cancelRedrawMode(); setMode('select');
+  state.redraw.points = [];
+  state.redraw.snapNode = null;
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 };
 
@@ -3216,9 +3260,64 @@ els.overlay.addEventListener('click', (e)=>{
     return;
   }
   if(state.mode==='redraw'){
-    state.redraw.points.push([x,y]);
+    let clickX = x;
+    let clickY = y;
+    if (state.redraw.snapNode) {
+      clickX = state.redraw.snapNode.x;
+      clickY = state.redraw.snapNode.y;
+    }
+    state.redraw.points.push([clickX, clickY]);
     drawOverlay();
     return;
+  }
+});
+
+els.overlay.addEventListener('mousemove', (e) => {
+  if (state.mode !== 'redraw' || !state.redraw.active) {
+    state.redraw.mouseX = null;
+    state.redraw.mouseY = null;
+    state.redraw.snapNode = null;
+    return;
+  }
+  const rec = activeImg();
+  if (!rec) return;
+
+  // Ignore if panning is active
+  if (zoomState.spacePressed || zoomState.panModeActive || zoomState.isPanning) {
+    state.redraw.mouseX = null;
+    state.redraw.mouseY = null;
+    state.redraw.snapNode = null;
+    drawOverlay();
+    return;
+  }
+
+  const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+  state.redraw.mouseX = x;
+  state.redraw.mouseY = y;
+
+  const shouldSnap = els.chkSnapToJunctions ? els.chkSnapToJunctions.checked : true;
+  state.redraw.snapNode = null;
+
+  if (shouldSnap) {
+    let bestDist = 15;
+    rec.nodes.forEach(n => {
+      const d = dist(n.x, n.y, x, y);
+      if (d < bestDist) {
+        bestDist = d;
+        state.redraw.snapNode = n;
+      }
+    });
+  }
+
+  drawOverlay();
+});
+
+els.overlay.addEventListener('mouseleave', () => {
+  if (state.mode === 'redraw') {
+    state.redraw.mouseX = null;
+    state.redraw.mouseY = null;
+    state.redraw.snapNode = null;
+    drawOverlay();
   }
 });
 

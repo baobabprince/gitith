@@ -2253,29 +2253,61 @@ function connectIncompleteEdges(rec, maxDist) {
   let connectedCount = 0;
   rec.edges.forEach(e => {
     if (!e.incomplete) return;
-    const lastPt = e.path[e.path.length - 1];
 
-    // Find closest node that is not the start node (e.n1)
-    let closestNode = null;
-    let closestDist = Infinity;
+    let connectedAny = false;
 
-    rec.nodes.forEach(n => {
-      if (n.id === e.n1) return;
-      const d = Math.hypot(n.x - lastPt[0], n.y - lastPt[1]);
-      if (d < closestDist) {
-        closestDist = d;
-        closestNode = n;
+    // 1. If start is unconnected (e.n1 is null)
+    if (!e.n1) {
+      const firstPt = e.path[0];
+      let closestNode = null;
+      let closestDist = Infinity;
+      rec.nodes.forEach(n => {
+        if (e.n2 && n.id === e.n2) return;
+        const d = Math.hypot(n.x - firstPt[0], n.y - firstPt[1]);
+        if (d < closestDist) {
+          closestDist = d;
+          closestNode = n;
+        }
+      });
+      if (closestNode && closestDist <= maxDist) {
+        e.n1 = closestNode.id;
+        e.path[0] = [closestNode.x, closestNode.y]; // snap the start point
+        connectedAny = true;
       }
-    });
+    }
 
-    if (closestNode && closestDist <= maxDist) {
-      // Connect!
-      e.n2 = closestNode.id;
-      e.path.push([closestNode.x, closestNode.y]);
+    // 2. If end is unconnected (e.n2 is null)
+    if (!e.n2) {
+      const lastPt = e.path[e.path.length - 1];
+      let closestNode = null;
+      let closestDist = Infinity;
+      rec.nodes.forEach(n => {
+        if (e.n1 && n.id === e.n1) return;
+        const d = Math.hypot(n.x - lastPt[0], n.y - lastPt[1]);
+        if (d < closestDist) {
+          closestDist = d;
+          closestNode = n;
+        }
+      });
+      if (closestNode && closestDist <= maxDist) {
+        e.n2 = closestNode.id;
+        e.path[e.path.length - 1] = [closestNode.x, closestNode.y]; // snap the end point
+        connectedAny = true;
+      }
+    }
+
+    if (connectedAny) {
       e.length = pathLength(e.path);
-      e.straight = Math.hypot(closestNode.x - rec.nodes.find(n=>n.id===e.n1).x, closestNode.y - rec.nodes.find(n=>n.id===e.n1).y);
+      const startNode = e.n1 ? rec.nodes.find(n => n.id === e.n1) : null;
+      const endNode = e.n2 ? rec.nodes.find(n => n.id === e.n2) : null;
+      const startX = startNode ? startNode.x : e.path[0][0];
+      const startY = startNode ? startNode.y : e.path[0][1];
+      const endX = endNode ? endNode.x : e.path[e.path.length - 1][0];
+      const endY = endNode ? endNode.y : e.path[e.path.length - 1][1];
+
+      e.straight = Math.hypot(endX - startX, endY - startY);
       e.ratio = e.straight > 0 ? e.length / e.straight : NaN;
-      e.incomplete = false;
+      e.incomplete = (!e.n1 || !e.n2);
       e.includeInStats = true;
       connectedCount++;
     }
@@ -3109,7 +3141,7 @@ els.finishRedraw.onclick = ()=>{
 
   const shouldSnap = els.chkSnapToJunctions ? els.chkSnapToJunctions.checked : true;
 
-  // 1. Find or create n1_node
+  // 1. Find n1_node
   let n1_node = null;
   if (shouldSnap) {
     let bestDist1 = 15;
@@ -3121,17 +3153,13 @@ els.finishRedraw.onclick = ()=>{
       }
     });
   }
-  if (!n1_node) {
-    n1_node = { id: 'n' + (rec.nextNodeId++), x: pFirst[0], y: pFirst[1], pixels: [] };
-    rec.nodes.push(n1_node);
-  }
 
-  // 2. Find or create n2_node
+  // 2. Find n2_node
   let n2_node = null;
   if (shouldSnap) {
     let bestDist2 = 15;
     rec.nodes.forEach(n => {
-      if (n.id === n1_node.id) return;
+      if (n1_node && n.id === n1_node.id) return;
       const d = dist(n.x, n.y, pLast[0], pLast[1]);
       if (d < bestDist2) {
         bestDist2 = d;
@@ -3139,35 +3167,31 @@ els.finishRedraw.onclick = ()=>{
       }
     });
   }
-  if (!n2_node) {
-    n2_node = { id: 'n' + (rec.nextNodeId++), x: pLast[0], y: pLast[1], pixels: [] };
-    rec.nodes.push(n2_node);
-  }
 
-  // 3. Build final path (manually drawn boundaries are always complete and stand on their own)
+  // 3. Build final path
   const finalPath = [];
-  finalPath.push([n1_node.x, n1_node.y]);
+  finalPath.push(n1_node ? [n1_node.x, n1_node.y] : [pFirst[0], pFirst[1]]);
   for (let i = 1; i < state.redraw.points.length - 1; i++) {
     finalPath.push(state.redraw.points[i]);
   }
-  finalPath.push([n2_node.x, n2_node.y]);
+  finalPath.push(n2_node ? [n2_node.x, n2_node.y] : [pLast[0], pLast[1]]);
 
   const length = pathLength(finalPath);
-  const straight = dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y);
+  const straight = dist(finalPath[0][0], finalPath[0][1], finalPath[finalPath.length-1][0], finalPath[finalPath.length-1][1]);
   const ratio = straight > 0 ? length / straight : NaN;
 
   // Always draw a new boundary from scratch
   const edgeId = 'e' + (rec.nextEdgeId++);
   const newEdge = {
     id: edgeId,
-    n1: n1_node.id,
-    n2: n2_node.id,
+    n1: n1_node ? n1_node.id : null,
+    n2: n2_node ? n2_node.id : null,
     path: finalPath,
     length: length,
     straight: straight,
     ratio: ratio,
     manual: true,
-    incomplete: false,
+    incomplete: (!n1_node || !n2_node),
     includeInStats: true
   };
   rec.edges.push(newEdge);
@@ -3303,14 +3327,14 @@ function addNodeOnEdge(rec, x, y){
 
   const path2 = [[projX, projY]].concat(edge.path.slice(bestSegIdx));
 
-  const n1 = rec.nodes.find(n=>n.id===edge.n1);
+  const n1 = edge.n1 ? rec.nodes.find(n=>n.id===edge.n1) : null;
   const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
   const e1 = { id:'e'+(rec.nextEdgeId++), n1:edge.n1, n2:newNode.id, path:path1,
-    length:pathLength(path1), straight: n1? Math.hypot(n1.x-newNode.x,n1.y-newNode.y):0, manual:true, incomplete:false, includeInStats:true };
+    length:pathLength(path1), straight: n1? Math.hypot(n1.x-newNode.x,n1.y-newNode.y): Math.hypot(path1[0][0]-newNode.x,path1[0][1]-newNode.y), manual:true, incomplete: !edge.n1, includeInStats:true };
   e1.ratio = e1.straight>0? e1.length/e1.straight : NaN;
   const e2 = { id:'e'+(rec.nextEdgeId++), n1:newNode.id, n2:edge.n2, path:path2,
-    length:pathLength(path2), straight: n2? Math.hypot(n2.x-newNode.x,n2.y-newNode.y): (edge.incomplete? edge.straight-e1.straight:0),
-    manual:true, incomplete: edge.incomplete, includeInStats: edge.includeInStats !== undefined ? edge.includeInStats : !edge.incomplete };
+    length:pathLength(path2), straight: n2? Math.hypot(n2.x-newNode.x,n2.y-newNode.y): Math.hypot(path2[path2.length-1][0]-newNode.x,path2[path2.length-1][1]-newNode.y),
+    manual:true, incomplete: !edge.n2, includeInStats: edge.includeInStats !== undefined ? edge.includeInStats : !edge.n2 };
   e2.ratio = e2.straight>0? e2.length/e2.straight : NaN;
   rec.edges = rec.edges.filter(e=>e.id!==edge.id);
   rec.edges.push(e1,e2);
@@ -3357,7 +3381,7 @@ function buildCSVRows(images){
       if (e.includeInStats === undefined) {
         e.includeInStats = !e.incomplete;
       }
-      rows.push([rec.name, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
+      rows.push([rec.name, e.id, e.n1||'', e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
         isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no', e.includeInStats?'yes':'no']);
     });
   });

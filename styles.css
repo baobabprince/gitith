@@ -91,7 +91,7 @@
   #center{grid-row:2;overflow:hidden;background:#060907;position:relative;
     display:flex;align-items:flex-start;justify-content:flex-start;padding:20px;}
   #right{grid-row:2;background:var(--panel);border-right:1px solid var(--line);
-    padding:14px;overflow-y:hidden;display:flex;flex-direction:column;gap:14px;height:calc(100vh - 52px);}
+    padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;height:calc(100vh - 52px);}
 
   /* Zoom controls and Canvas wrapping styles */
   #zoomControls {

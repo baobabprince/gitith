@@ -3109,7 +3109,7 @@ els.finishRedraw.onclick = ()=>{
 
   const shouldSnap = els.chkSnapToJunctions ? els.chkSnapToJunctions.checked : true;
 
-  // 1. Find or create n1_node
+  // 1. Find n1_node if snapped to an existing junction
   let n1_node = null;
   if (shouldSnap) {
     let bestDist1 = 15;
@@ -3121,17 +3121,13 @@ els.finishRedraw.onclick = ()=>{
       }
     });
   }
-  if (!n1_node) {
-    n1_node = { id: 'n' + (rec.nextNodeId++), x: pFirst[0], y: pFirst[1], pixels: [] };
-    rec.nodes.push(n1_node);
-  }
 
-  // 2. Find or create n2_node
+  // 2. Find n2_node if snapped to an existing junction
   let n2_node = null;
   if (shouldSnap) {
     let bestDist2 = 15;
     rec.nodes.forEach(n => {
-      if (n.id === n1_node.id) return;
+      if (n1_node && n.id === n1_node.id) return;
       const d = dist(n.x, n.y, pLast[0], pLast[1]);
       if (d < bestDist2) {
         bestDist2 = d;
@@ -3139,42 +3135,41 @@ els.finishRedraw.onclick = ()=>{
       }
     });
   }
-  if (!n2_node) {
-    n2_node = { id: 'n' + (rec.nextNodeId++), x: pLast[0], y: pLast[1], pixels: [] };
-    rec.nodes.push(n2_node);
-  }
 
-  // 3. Build final path (manually drawn boundaries are always complete and stand on their own)
-  const finalPath = [];
-  finalPath.push([n1_node.x, n1_node.y]);
+  // 3. Build final path
+  const p1Coords = n1_node ? [n1_node.x, n1_node.y] : pFirst;
+  const p2Coords = n2_node ? [n2_node.x, n2_node.y] : pLast;
+
+  const finalPath = [p1Coords];
   for (let i = 1; i < state.redraw.points.length - 1; i++) {
     finalPath.push(state.redraw.points[i]);
   }
-  finalPath.push([n2_node.x, n2_node.y]);
+  finalPath.push(p2Coords);
 
   const length = pathLength(finalPath);
-  const straight = dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y);
+  const straight = dist(p1Coords[0], p1Coords[1], p2Coords[0], p2Coords[1]);
   const ratio = straight > 0 ? length / straight : NaN;
+  const isIncomplete = (!n1_node || !n2_node);
 
-  // Always draw a new boundary from scratch
+  // Create new boundary
   const edgeId = 'e' + (rec.nextEdgeId++);
   const newEdge = {
     id: edgeId,
-    n1: n1_node.id,
-    n2: n2_node.id,
+    n1: n1_node ? n1_node.id : null,
+    n2: n2_node ? n2_node.id : null,
     path: finalPath,
     length: length,
     straight: straight,
     ratio: ratio,
     manual: true,
-    incomplete: false,
+    incomplete: isIncomplete,
     includeInStats: true
   };
   rec.edges.push(newEdge);
   state.selectedEdge = edgeId;
   log(getI18nStr('logManualDrawNewSuccess', {id: edgeId, len: length.toFixed(1), ratio: isFinite(ratio) ? ratio.toFixed(3) : '—'}));
 
-  cancelRedrawMode(); setMode('select');
+  state.redraw.points = [];
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 };
 

@@ -356,6 +356,10 @@ function setMobileTab(tabId) {
   } else if (tabId === 'results') {
     app.classList.add('tab-results');
     document.getElementById('tabMobResults').classList.add('active');
+  } else if (tabId === 'charts') {
+    app.classList.add('tab-charts');
+    document.getElementById('tabMobCharts').classList.add('active');
+    renderCharts();
   } else if (tabId === 'log') {
     app.classList.add('tab-log');
     document.getElementById('tabMobLog').classList.add('active');
@@ -375,7 +379,8 @@ document.getElementById('tabMobSettings').addEventListener('click', () => setMob
 document.getElementById('tabMobView').addEventListener('click', () => setMobileTab('view'));
 document.getElementById('tabMobEdit').addEventListener('click', () => setMobileTab('edit'));
 document.getElementById('tabMobResults').addEventListener('click', () => setMobileTab('results'));
-  document.getElementById('tabMobLog').addEventListener('click', () => setMobileTab('log'));
+  document.getElementById('tabMobCharts').addEventListener('click', () => setMobileTab('charts'));
+document.getElementById('tabMobLog').addEventListener('click', () => setMobileTab('log'));
 
 
 function loadFile(file){
@@ -2898,6 +2903,9 @@ function updateStatsPanel(){
   } else {
     els.statAvg.textContent='—'; els.statStd.textContent='—';
   }
+  if (typeof renderCharts === 'function') {
+    renderCharts();
+  }
 }
 
 function handleSortClick(col) {
@@ -3347,7 +3355,55 @@ function removeNode(rec, nodeId){
   drawOverlay(); updateStatsPanel(); renderEdgeTable(); refreshImgList();
 }
 
-/* ===================== Export ===================== */
+/* ===================== Extended Statistics, Charts & Export ===================== */
+function computeImageStats(rec) {
+  if (!rec) return null;
+  const valid = rec.edges.filter(e => {
+    if (e.includeInStats === undefined) e.includeInStats = !e.incomplete;
+    return e.includeInStats && isFinite(e.ratio);
+  });
+
+  const ratios = valid.map(e => e.ratio).sort((a, b) => a - b);
+  const n_edges = valid.length;
+
+  // Count junctions: nodes with degree >= 3 or all nodes
+  const n_junctions = rec.nodes ? rec.nodes.filter(n => {
+    const deg = rec.edges.filter(e => e.n1 === n.id || e.n2 === n.id).length;
+    return deg >= 3;
+  }).length : 0;
+
+  const mean = n_edges ? valid.reduce((s, e) => s + e.ratio, 0) / n_edges : null;
+  const variance = (n_edges && mean !== null) ? valid.reduce((s, e) => s + (e.ratio - mean) ** 2, 0) / n_edges : null;
+  const std = variance !== null ? Math.sqrt(variance) : null;
+
+  let median = null;
+  if (n_edges > 0) {
+    const mid = Math.floor(n_edges / 2);
+    median = n_edges % 2 !== 0 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2;
+  }
+
+  const min = n_edges ? ratios[0] : null;
+  const max = n_edges ? ratios[ratios.length - 1] : null;
+
+  const total_length_px = valid.reduce((s, e) => s + e.length, 0);
+  const area_px2 = rec.imgData ? (rec.imgData.width * rec.imgData.height) : 0;
+  const boundary_density = area_px2 ? (total_length_px / area_px2) : 0;
+
+  return {
+    name: rec.name,
+    n_edges,
+    n_junctions,
+    mean_ratio: mean,
+    std_ratio: std,
+    median_ratio: median,
+    min_ratio: min,
+    max_ratio: max,
+    total_length_px,
+    boundary_density,
+    ratios
+  };
+}
+
 function csvEscape(v){ return `"${String(v).replace(/"/g,'""')}"`; }
 
 function buildCSVRows(images){
@@ -3362,21 +3418,24 @@ function buildCSVRows(images){
     });
   });
   rows.push([]);
-  rows.push(['image','n_edges','mean_ratio_single_measurement','std_ratio']);
+  rows.push(['image','n_edges','n_junctions','mean_ratio','std_ratio','median_ratio','min_ratio','max_ratio','total_length_px','boundary_density']);
   images.forEach(rec=>{
-    const valid = rec.edges.filter(e => {
-      if (e.includeInStats === undefined) {
-        e.includeInStats = !e.incomplete;
-      }
-      return e.includeInStats && isFinite(e.ratio);
-    });
-
-    if(valid.length){
-      const avg = valid.reduce((s,e)=>s+e.ratio,0)/valid.length;
-      const sd = Math.sqrt(valid.reduce((s,e)=>s+(e.ratio-avg)**2,0)/valid.length);
-      rows.push([rec.name, valid.length, avg.toFixed(4), sd.toFixed(4)]);
+    const st = computeImageStats(rec);
+    if(st && st.n_edges){
+      rows.push([
+        rec.name,
+        st.n_edges,
+        st.n_junctions,
+        st.mean_ratio.toFixed(4),
+        st.std_ratio.toFixed(4),
+        st.median_ratio.toFixed(4),
+        st.min_ratio.toFixed(4),
+        st.max_ratio.toFixed(4),
+        st.total_length_px.toFixed(2),
+        st.boundary_density.toFixed(6)
+      ]);
     } else {
-      rows.push([rec.name, 0, '', '']);
+      rows.push([rec.name, 0, st ? st.n_junctions : 0, '', '', '', '', '', '', '']);
     }
   });
   return rows;
@@ -3384,7 +3443,7 @@ function buildCSVRows(images){
 
 function downloadCSV(rows, filename){
   const csv = rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
-  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -3401,6 +3460,515 @@ els.exportAll.onclick = ()=>{
   downloadCSV(buildCSVRows(state.images), `tj_undulation_all_images.csv`);
   log(getI18nStr('logExportingAll', {count: state.images.length}));
 };
+
+/* ===================== Interactive Charts ===================== */
+let chartHistogramInst = null;
+let chartComparisonInst = null;
+let chartDensityInst = null;
+
+function renderCharts() {
+  if (typeof Chart === 'undefined') return;
+
+  const images = state.images;
+  const allStats = images.map(rec => computeImageStats(rec)).filter(Boolean);
+
+  // Update Overview Cards
+  const totalImages = images.length;
+  const totalEdges = allStats.reduce((s, st) => s + st.n_edges, 0);
+  const totalJunctions = allStats.reduce((s, st) => s + st.n_junctions, 0);
+  const validMeans = allStats.filter(st => st.mean_ratio !== null).map(st => st.mean_ratio);
+  const overallMean = validMeans.length ? (validMeans.reduce((s, m) => s + m, 0) / validMeans.length) : null;
+  const validDensities = allStats.filter(st => st.boundary_density > 0).map(st => st.boundary_density);
+  const avgDensity = validDensities.length ? (validDensities.reduce((s, d) => s + d, 0) / validDensities.length) : null;
+
+  const cardTotalImages = document.getElementById('cardTotalImages');
+  const cardTotalEdges = document.getElementById('cardTotalEdges');
+  const cardTotalJunctions = document.getElementById('cardTotalJunctions');
+  const cardOverallMean = document.getElementById('cardOverallMean');
+  const cardAvgDensity = document.getElementById('cardAvgDensity');
+
+  if (cardTotalImages) cardTotalImages.textContent = totalImages;
+  if (cardTotalEdges) cardTotalEdges.textContent = totalEdges;
+  if (cardTotalJunctions) cardTotalJunctions.textContent = totalJunctions;
+  if (cardOverallMean) cardOverallMean.textContent = overallMean ? overallMean.toFixed(3) : '—';
+  if (cardAvgDensity) cardAvgDensity.textContent = avgDensity ? avgDensity.toFixed(5) : '—';
+
+  // 1. Histogram Chart: All ratios grouped into bins
+  const allRatios = [];
+  allStats.forEach(st => {
+    if (st.ratios) allRatios.push(...st.ratios);
+  });
+
+  const numBins = 8;
+  const minRatio = 1.0;
+  const maxRatio = 1.4;
+  const binWidth = (maxRatio - minRatio) / numBins;
+  const binCounts = new Array(numBins).fill(0);
+  const binLabels = [];
+
+  for (let i = 0; i < numBins; i++) {
+    const low = minRatio + i * binWidth;
+    const high = low + binWidth;
+    if (i === numBins - 1) {
+      binLabels.push(`≥ ${low.toFixed(2)}`);
+    } else {
+      binLabels.push(`${low.toFixed(2)} - ${high.toFixed(2)}`);
+    }
+  }
+
+  allRatios.forEach(r => {
+    if (r < minRatio) {
+      binCounts[0]++;
+    } else if (r >= maxRatio) {
+      binCounts[numBins - 1]++;
+    } else {
+      const idx = Math.min(Math.floor((r - minRatio) / binWidth), numBins - 1);
+      binCounts[idx]++;
+    }
+  });
+
+  const canvasH = document.getElementById('chartHistogram');
+  if (canvasH) {
+    if (chartHistogramInst) chartHistogramInst.destroy();
+    chartHistogramInst = new Chart(canvasH.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: binLabels,
+        datasets: [{
+          label: getI18nStr('thRatio') || 'Ratio',
+          data: binCounts,
+          backgroundColor: 'rgba(57, 255, 158, 0.6)',
+          borderColor: '#39ff9e',
+          borderWidth: 1.5,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          x: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // 2. Cross-Image Comparison Chart (Mean & Median Ratio)
+  const compLabels = allStats.map(st => st.name.length > 15 ? st.name.substring(0, 12) + '...' : st.name);
+  const compMeans = allStats.map(st => st.mean_ratio !== null ? Number(st.mean_ratio.toFixed(3)) : 0);
+  const compMedians = allStats.map(st => st.median_ratio !== null ? Number(st.median_ratio.toFixed(3)) : 0);
+
+  const canvasC = document.getElementById('chartComparison');
+  if (canvasC) {
+    if (chartComparisonInst) chartComparisonInst.destroy();
+    chartComparisonInst = new Chart(canvasC.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: compLabels,
+        datasets: [
+          {
+            label: getI18nStr('thImgMean') || 'Mean Ratio',
+            data: compMeans,
+            backgroundColor: 'rgba(31, 122, 82, 0.7)',
+            borderColor: '#39ff9e',
+            borderWidth: 1.5,
+            borderRadius: 4
+          },
+          {
+            label: getI18nStr('thImgMedian') || 'Median Ratio',
+            data: compMedians,
+            backgroundColor: 'rgba(255, 213, 74, 0.7)',
+            borderColor: '#ffd54a',
+            borderWidth: 1.5,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#d0dfd8', font: { size: 11 } } }
+        },
+        scales: {
+          x: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 1.0 }
+        }
+      }
+    });
+  }
+
+  // 3. Junctions & Density Chart
+  const densityVals = allStats.map(st => Number((st.boundary_density * 1000).toFixed(3)));
+  const junctionVals = allStats.map(st => st.n_junctions);
+
+  const canvasD = document.getElementById('chartDensity');
+  if (canvasD) {
+    if (chartDensityInst) chartDensityInst.destroy();
+    chartDensityInst = new Chart(canvasD.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: compLabels,
+        datasets: [
+          {
+            type: 'bar',
+            label: getI18nStr('thImgJunctions') || 'Junctions',
+            data: junctionVals,
+            backgroundColor: 'rgba(65, 86, 71, 0.8)',
+            borderColor: '#5a7762',
+            borderWidth: 1,
+            yAxisID: 'yJunctions'
+          },
+          {
+            type: 'line',
+            label: (getI18nStr('thImgDensity') || 'Density') + ' (x10³)',
+            data: densityVals,
+            borderColor: '#ffd54a',
+            backgroundColor: 'rgba(255, 213, 74, 0.2)',
+            borderWidth: 2,
+            tension: 0.2,
+            yAxisID: 'yDensity'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#d0dfd8', font: { size: 11 } } }
+        },
+        scales: {
+          x: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          yJunctions: {
+            type: 'linear',
+            position: 'left',
+            ticks: { color: '#8faba0', font: { size: 10 } },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            beginAtZero: true
+          },
+          yDensity: {
+            type: 'linear',
+            position: 'right',
+            ticks: { color: '#ffd54a', font: { size: 10 } },
+            grid: { drawOnChartArea: false },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  updateAllImagesTable(allStats);
+}
+
+function updateAllImagesTable(allStats) {
+  const tbody = document.getElementById('allImagesTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!allStats || !allStats.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:16px;">${getI18nStr('logNoImagesLoaded')}</td></tr>`;
+    return;
+  }
+
+  allStats.forEach(st => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:600;">${st.name}</td>
+      <td>${st.n_edges}</td>
+      <td>${st.n_junctions}</td>
+      <td style="color:var(--green); font-weight:600;">${st.mean_ratio !== null ? st.mean_ratio.toFixed(4) : '—'}</td>
+      <td>${st.std_ratio !== null ? st.std_ratio.toFixed(4) : '—'}</td>
+      <td>${st.median_ratio !== null ? st.median_ratio.toFixed(4) : '—'}</td>
+      <td>${st.min_ratio !== null ? `${st.min_ratio.toFixed(3)} / ${st.max_ratio.toFixed(3)}` : '—'}</td>
+      <td>${st.total_length_px ? st.total_length_px.toFixed(1) : '0'}</td>
+      <td>${st.boundary_density ? st.boundary_density.toFixed(6) : '0'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ===================== PDF Report Generation ===================== */
+async function generatePDFReport(imagesToExport) {
+  if (!imagesToExport || !imagesToExport.length) {
+    log(getI18nStr('logNoImagesLoaded'));
+    return;
+  }
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    log('jsPDF library not available');
+    return;
+  }
+
+  log(getI18nStr('logGeneratingPDF'));
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+  let y = margin;
+
+  // Title Banner
+  pdf.setFillColor(13, 36, 23);
+  pdf.rect(0, 0, pageWidth, 28, 'F');
+
+  pdf.setTextColor(57, 255, 158);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(18);
+  pdf.text('TJ Undulation Analyzer', margin, 12);
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Comprehensive Statistical Analysis & Cell Boundary Undulation Report', margin, 20);
+
+  pdf.setFontSize(8);
+  pdf.setTextColor(180, 200, 190);
+  const dateStr = new Date().toLocaleString();
+  pdf.text(`Generated: ${dateStr}`, pageWidth - margin, 20, { align: 'right' });
+
+  y = 36;
+
+  // Overview Summary Section
+  pdf.setTextColor(30, 30, 30);
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Executive Summary', margin, y);
+  y += 8;
+
+  const allStats = imagesToExport.map(rec => computeImageStats(rec)).filter(Boolean);
+  const totalImg = imagesToExport.length;
+  const totalEdges = allStats.reduce((s, st) => s + st.n_edges, 0);
+  const totalJunctions = allStats.reduce((s, st) => s + st.n_junctions, 0);
+  const validMeans = allStats.filter(st => st.mean_ratio !== null).map(st => st.mean_ratio);
+  const overallMean = validMeans.length ? (validMeans.reduce((s, m) => s + m, 0) / validMeans.length) : 0;
+
+  // Draw Summary Stats Box
+  pdf.setFillColor(245, 248, 246);
+  pdf.setDrawColor(200, 220, 210);
+  pdf.roundedRect(margin, y, pageWidth - 2 * margin, 22, 3, 3, 'FD');
+
+  pdf.setFontSize(10);
+  pdf.setTextColor(40, 60, 50);
+  pdf.setFont('helvetica', 'normal');
+
+  const colW = (pageWidth - 2 * margin) / 4;
+  pdf.text(`Total Images: ${totalImg}`, margin + 5, y + 9);
+  pdf.text(`Total Boundaries: ${totalEdges}`, margin + colW + 5, y + 9);
+  pdf.text(`Total Junctions: ${totalJunctions}`, margin + 2 * colW + 5, y + 9);
+  pdf.text(`Overall Mean Ratio: ${overallMean ? overallMean.toFixed(4) : '—'}`, margin + 3 * colW + 5, y + 9);
+
+  y += 28;
+
+  // Add Chart Snapshots
+  const chartHistogramCanvas = document.getElementById('chartHistogram');
+  const chartComparisonCanvas = document.getElementById('chartComparison');
+
+  if (chartHistogramCanvas) {
+    try {
+      const histDataUrl = chartHistogramCanvas.toDataURL('image/png');
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Ratio Distribution Histogram', margin, y);
+      y += 4;
+      const imgW = pageWidth - 2 * margin;
+      const imgH = 55;
+      pdf.addImage(histDataUrl, 'PNG', margin, y, imgW, imgH);
+      y += imgH + 10;
+    } catch(e) {
+      console.warn('Could not export histogram chart to PDF', e);
+    }
+  }
+
+  if (chartComparisonCanvas && y + 60 < pageHeight) {
+    try {
+      const compDataUrl = chartComparisonCanvas.toDataURL('image/png');
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Cross-Image Mean & Median Ratio Comparison', margin, y);
+      y += 4;
+      const imgW = pageWidth - 2 * margin;
+      const imgH = 55;
+      pdf.addImage(compDataUrl, 'PNG', margin, y, imgW, imgH);
+      y += imgH + 10;
+    } catch(e) {
+      console.warn('Could not export comparison chart to PDF', e);
+    }
+  }
+
+  // Individual Image Details
+  for (let idx = 0; idx < imagesToExport.length; idx++) {
+    const rec = imagesToExport[idx];
+    const st = computeImageStats(rec);
+
+    pdf.addPage();
+
+    pdf.setFillColor(240, 245, 242);
+    pdf.setDrawColor(180, 210, 195);
+    pdf.rect(0, 0, pageWidth, 22, 'F');
+
+    pdf.setTextColor(20, 50, 35);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(13);
+    pdf.text(`Image ${idx + 1}/${imagesToExport.length}: ${rec.name}`, margin, 14);
+
+    let iy = 30;
+
+    if (rec.canvas) {
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = rec.canvas.width;
+      snapCanvas.height = rec.canvas.height;
+      const ctx = snapCanvas.getContext('2d');
+
+      ctx.drawImage(rec.canvas, 0, 0);
+
+      ctx.save();
+      ctx.lineWidth = Math.max(2, Math.round(snapCanvas.width / 400));
+      ctx.font = `${Math.max(12, Math.round(snapCanvas.width / 60))}px sans-serif`;
+
+      rec.edges.forEach(e => {
+        if (!e.path || !e.path.length) return;
+        ctx.beginPath();
+        ctx.moveTo(e.path[0].x, e.path[0].y);
+        for (let p = 1; p < e.path.length; p++) {
+          ctx.lineTo(e.path[p].x, e.path[p].y);
+        }
+        ctx.strokeStyle = isFinite(e.ratio) ? ratioColor(e.ratio) : '#888888';
+        ctx.stroke();
+      });
+
+      rec.nodes.forEach(n => {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, Math.max(4, snapCanvas.width / 200), 0, Math.PI * 2);
+        ctx.fillStyle = '#ffd54a';
+        ctx.fill();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      const snapUrl = snapCanvas.toDataURL('image/jpeg', 0.85);
+      const aspect = rec.canvas.height / rec.canvas.width;
+      const maxImgW = pageWidth - 2 * margin;
+      const maxImgH = 100;
+      let displayW = maxImgW;
+      let displayH = displayW * aspect;
+
+      if (displayH > maxImgH) {
+        displayH = maxImgH;
+        displayW = displayH / aspect;
+      }
+
+      pdf.addImage(snapUrl, 'JPEG', (pageWidth - displayW) / 2, iy, displayW, displayH);
+      iy += displayH + 10;
+    }
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 30, 30);
+    pdf.text('Boundary Statistics Summary', margin, iy);
+    iy += 6;
+
+    pdf.setFillColor(250, 252, 251);
+    pdf.setDrawColor(210, 225, 218);
+    pdf.roundedRect(margin, iy, pageWidth - 2 * margin, 40, 2, 2, 'FD');
+
+    pdf.setFontSize(9.5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(50, 50, 50);
+
+    const c1 = margin + 6;
+    const c2 = margin + (pageWidth - 2 * margin) / 2 + 6;
+
+    pdf.text(`Boundaries Analyzed: ${st.n_edges}`, c1, iy + 8);
+    pdf.text(`Junction Points (CN≥3): ${st.n_junctions}`, c2, iy + 8);
+
+    pdf.text(`Mean Ratio: ${st.mean_ratio !== null ? st.mean_ratio.toFixed(4) : '—'}`, c1, iy + 16);
+    pdf.text(`Std Deviation: ${st.std_ratio !== null ? st.std_ratio.toFixed(4) : '—'}`, c2, iy + 16);
+
+    pdf.text(`Median Ratio: ${st.median_ratio !== null ? st.median_ratio.toFixed(4) : '—'}`, c1, iy + 24);
+    pdf.text(`Min / Max Ratio: ${st.min_ratio !== null ? `${st.min_ratio.toFixed(3)} / ${st.max_ratio.toFixed(3)}` : '—'}`, c2, iy + 24);
+
+    pdf.text(`Total Boundary Length: ${st.total_length_px ? st.total_length_px.toFixed(1) : 0} px`, c1, iy + 32);
+    pdf.text(`Boundary Density: ${st.boundary_density ? st.boundary_density.toFixed(6) : 0} px/px²`, c2, iy + 32);
+
+    iy += 48;
+  }
+
+  const filename = imagesToExport.length === 1 ?
+    `tj_undulation_report_${imagesToExport[0].name.replace(/\.[^.]+$/, '')}.pdf` :
+    `tj_undulation_report_all_images.pdf`;
+
+  pdf.save(filename);
+  log(getI18nStr('logPDFExportSuccess'));
+}
+
+// Right Tab Navigation & PDF Button Event Listeners
+const rightTabResults = document.getElementById('rightTabResults');
+const rightTabCharts = document.getElementById('rightTabCharts');
+const rightResultsView = document.getElementById('rightResultsView');
+const rightChartsView = document.getElementById('rightChartsView');
+
+if (rightTabResults && rightTabCharts) {
+  rightTabResults.onclick = () => {
+    rightTabResults.classList.add('active');
+    rightTabCharts.classList.remove('active');
+    if (rightResultsView) rightResultsView.style.display = 'flex';
+    if (rightChartsView) rightChartsView.style.display = 'none';
+  };
+
+  rightTabCharts.onclick = () => {
+    rightTabCharts.classList.add('active');
+    rightTabResults.classList.remove('active');
+    if (rightResultsView) rightResultsView.style.display = 'none';
+    if (rightChartsView) rightChartsView.style.display = 'flex';
+    renderCharts();
+  };
+}
+
+const exportPDFCurrent = document.getElementById('exportPDFCurrent');
+const exportPDFAll = document.getElementById('exportPDFAll');
+const btnExportPDFCurrentCharts = document.getElementById('btnExportPDFCurrentCharts');
+const btnExportPDFCharts = document.getElementById('btnExportPDFCharts');
+
+if (exportPDFCurrent) {
+  exportPDFCurrent.onclick = () => {
+    const rec = activeImg(); if (!rec) { log(getI18nStr('logNoImage')); return; }
+    generatePDFReport([rec]);
+  };
+}
+if (exportPDFAll) {
+  exportPDFAll.onclick = () => {
+    if (!state.images.length) { log(getI18nStr('logNoImagesLoaded')); return; }
+    generatePDFReport(state.images);
+  };
+}
+if (btnExportPDFCurrentCharts) {
+  btnExportPDFCurrentCharts.onclick = () => {
+    const rec = activeImg(); if (!rec) { log(getI18nStr('logNoImage')); return; }
+    generatePDFReport([rec]);
+  };
+}
+if (btnExportPDFCharts) {
+  btnExportPDFCharts.onclick = () => {
+    if (!state.images.length) { log(getI18nStr('logNoImagesLoaded')); return; }
+    generatePDFReport(state.images);
+  };
+}
+
+
 
 /* ===================== Session Save / Load ===================== */
 function serializeImgData(imgData) {

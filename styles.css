@@ -549,6 +549,19 @@
       display: flex !important;
     }
 
+
+    #app.tab-charts #right {
+      display: flex !important;
+      height: auto !important;
+      overflow-y: auto !important;
+    }
+    #app.tab-charts #right #rightResultsView {
+      display: none !important;
+    }
+    #app.tab-charts #right #rightChartsView {
+      display: flex !important;
+    }
+
     #app.tab-results #right {
       display: flex !important;
       height: auto !important;
@@ -659,4 +672,88 @@
 }
 .switch-label {
   white-space: nowrap;
+}
+
+
+/* Right Tab Navigation & Analytics Cards */
+.right-tab-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.right-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.right-tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+.right-tab-btn.active {
+  background: var(--green);
+  color: #0b0f0d;
+}
+
+.analytics-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.analytics-card {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analytics-card span {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.analytics-card b {
+  font-size: 1.1rem;
+  color: var(--green);
+}
+
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: start;
+}
+.analytics-table th, .analytics-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.analytics-table th {
+  background: var(--panel2);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.analytics-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chart-container {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 8px;
 }

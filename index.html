@@ -34,6 +34,7 @@
     <button id="tabMobView" data-i18n="tabMobileView">תצוגה</button>
     <button id="tabMobEdit" data-i18n="tabMobileEdit">עריכה</button>
     <button id="tabMobResults" data-i18n="tabMobileResults">תוצאות</button>
+    <button id="tabMobCharts" data-i18n="tabMobileCharts">גרפים</button>
     <button id="tabMobLog" data-i18n="tabMobileLog">לוג</button>
   </nav>
 
@@ -412,6 +413,12 @@
 
   <!-- RIGHT: stats, edge table, log -->
   <div id="right">
+    <div id="rightTabNav" class="right-tab-nav">
+      <button id="rightTabResults" class="right-tab-btn active" data-i18n="tabRightResults">תוצאות וטבלה</button>
+      <button id="rightTabCharts" class="right-tab-btn" data-i18n="tabRightCharts">גרפים וניתוח</button>
+    </div>
+
+    <div id="rightResultsView" style="display:flex; flex-direction:column; gap:14px; flex:1;">
     <div class="block" id="blockSummary">
       <h2 data-i18n="lblCurrentSummary">סיכום תמונה נוכחית</h2>
       <div class="stat"><span data-i18n="lblNodes">צמתים</span><b id="statNodes">0</b></div>
@@ -421,9 +428,11 @@
       <div id="legend">
         <span>1.0</span><div class="grad"></div><span>&ge;1.5</span>
       </div>
-      <div class="row" style="margin-top:10px;">
+      <div class="row" style="margin-top:10px; flex-wrap:wrap;">
         <button id="exportCurrent" data-i18n="exportCurrent">ייצוא CSV — תמונה זו</button>
         <button id="exportAll" class="primary" data-i18n="exportAll">ייצוא CSV — כל התמונות</button>
+        <button id="exportPDFCurrent" class="secondary" data-i18n="exportPDFCurrent">ייצוא PDF — תמונה זו</button>
+        <button id="exportPDFAll" class="primary" data-i18n="exportPDFAll" style="background:#2d8a5e; border-color:#2d8a5e;">ייצוא PDF — כל התמונות</button>
       </div>
     </div>
 
@@ -441,10 +450,81 @@
       <h2 data-i18n="lblLog">לוג</h2>
       <div id="log"></div>
     </div>
+    </div> <!-- End rightResultsView -->
+
+    <div id="rightChartsView" style="display:none; flex-direction:column; gap:14px; flex:1;">
+      <!-- Charts Header / Quick Export -->
+      <div class="block">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+          <h2 data-i18n="lblAnalyticsTitle" style="margin:0;">ניתוח סטטיסטי וגרפים</h2>
+          <div class="row" style="gap:6px; margin:0;">
+            <button id="btnExportPDFCurrentCharts" class="secondary" data-i18n="exportPDFCurrent">ייצוא PDF — תמונה זו</button>
+            <button id="btnExportPDFCharts" class="primary" data-i18n="exportPDFAll" style="background:#2d8a5e; border-color:#2d8a5e;">ייצוא PDF — כל התמונות</button>
+          </div>
+        </div>
+        <div class="analytics-stats-grid" id="analyticsOverviewGrid">
+          <div class="analytics-card"><span data-i18n="lblTotalImages">סה"כ תמונות</span><b id="cardTotalImages">0</b></div>
+          <div class="analytics-card"><span data-i18n="lblOverallAvgRatio">יחס ממוצע כולל</span><b id="cardOverallMean">—</b></div>
+          <div class="analytics-card"><span data-i18n="lblTotalJunctions">סה"כ צמתים</span><b id="cardTotalJunctions">0</b></div>
+          <div class="analytics-card"><span data-i18n="lblTotalEdges">סה"כ דפנות</span><b id="cardTotalEdges">0</b></div>
+          <div class="analytics-card"><span data-i18n="lblAvgDensity">צפיפות ממוצעת</span><b id="cardAvgDensity">—</b></div>
+        </div>
+      </div>
+
+      <!-- Chart 1: Ratio Distribution Histogram -->
+      <div class="block">
+        <h2 data-i18n="lblChartHistogram">התפלגות יחס עקלקלות (Ratio Histogram)</h2>
+        <div class="chart-container" style="position:relative; height:260px; width:100%;">
+          <canvas id="chartHistogram"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Cross-Image Comparison (Mean ± SD & Boxplot) -->
+      <div class="block">
+        <h2 data-i18n="lblChartComparison">השוואה בין תמונות (Mean ± SD & Boxplot)</h2>
+        <div class="chart-container" style="position:relative; height:280px; width:100%;">
+          <canvas id="chartComparison"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Junction Count & Boundary Density per Image -->
+      <div class="block">
+        <h2 data-i18n="lblChartDensity">צמתים וצפיפות דפנות לפי תמונה</h2>
+        <div class="chart-container" style="position:relative; height:260px; width:100%;">
+          <canvas id="chartDensity"></canvas>
+        </div>
+      </div>
+
+      <!-- Multi-Image Statistics Table -->
+      <div class="block">
+        <h2 data-i18n="lblAllImagesTable">טבלת השוואת תמונות מורחבת</h2>
+        <div style="overflow-x:auto;">
+          <table id="allImagesTable" class="analytics-table">
+            <thead>
+              <tr>
+                <th data-i18n="thImgName">שם תמונה</th>
+                <th data-i18n="thImgEdges">דפנות</th>
+                <th data-i18n="thImgJunctions">צמתים</th>
+                <th data-i18n="thImgMean">ממוצע Ratio</th>
+                <th data-i18n="thImgStd">סטיית תקן</th>
+                <th data-i18n="thImgMedian">חציון</th>
+                <th data-i18n="thImgMinMax">מינימום / מקסימום</th>
+                <th data-i18n="thImgTotalLength">סה"כ אורך (px)</th>
+                <th data-i18n="thImgDensity">צפיפות (px/px²)</th>
+              </tr>
+            </thead>
+            <tbody id="allImagesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script src="vendor/jszip.min.js"></script>
+<script src="vendor/chart.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
 <script src="translations.js"></script>
 <script src="app.js"></script>
 </body>

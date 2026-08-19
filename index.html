@@ -495,6 +495,29 @@
         </div>
       </div>
 
+            <!-- Group Statistics Table -->
+      <div class="block">
+        <h2 data-i18n="lblGroupsTable">טבלת השוואת קבוצות (Group Statistics)</h2>
+        <div style="overflow-x:auto;">
+          <table id="groupTable" class="analytics-table">
+            <thead>
+              <tr>
+                <th data-i18n="thGroupName">שם קבוצה</th>
+                <th data-i18n="thGroupImages">תמונות בקבוצה</th>
+                <th data-i18n="thGroupEdges">סה"כ דפנות</th>
+                <th data-i18n="thGroupJunctions">סה"כ צמתים</th>
+                <th data-i18n="thGroupMean">ממוצע Ratio</th>
+                <th data-i18n="thGroupStd">סטיית תקן</th>
+                <th data-i18n="thGroupMedian">חציון</th>
+                <th data-i18n="thGroupMinMax">מינימום / מקסימום</th>
+                <th data-i18n="thGroupDensity">צפיפות ממוצעת (px/px²)</th>
+              </tr>
+            </thead>
+            <tbody id="groupTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Multi-Image Statistics Table -->
       <div class="block">
         <h2 data-i18n="lblAllImagesTable">טבלת השוואת תמונות מורחבת</h2>
@@ -503,6 +526,7 @@
             <thead>
               <tr>
                 <th data-i18n="thImgName">שם תמונה</th>
+                <th data-i18n="thImgGroup">קבוצה</th>
                 <th data-i18n="thImgEdges">דפנות</th>
                 <th data-i18n="thImgJunctions">צמתים</th>
                 <th data-i18n="thImgMean">ממוצע Ratio</th>

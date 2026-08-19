@@ -408,7 +408,7 @@ function loadFile(file){
     }
     const rec = {
       id: 'im'+Math.random().toString(36).slice(2,9),
-      name: file.name, width:w, height:h, imgData,
+      name: file.name, group: 'Default', width:w, height:h, imgData,
       binary:null, skeleton:null, nodes:[], edges:[],
       threshold: autoThreshold(imgData),
       // Geometric merge distance for collapsing nearby branch-point blobs into
@@ -467,7 +467,7 @@ function loadImageFromUrl(url, name){
     }
     const rec = {
       id: 'im'+Math.random().toString(36).slice(2,9),
-      name: name, width:w, height:h, imgData,
+      name: name, group: 'Default', width:w, height:h, imgData,
       binary:null, skeleton:null, nodes:[], edges:[],
       threshold: autoThreshold(imgData),
       mergeDist: Math.max(8, Math.min(20, Math.round(Math.min(w,h)/60))),
@@ -3356,6 +3356,67 @@ function removeNode(rec, nodeId){
 }
 
 /* ===================== Extended Statistics, Charts & Export ===================== */
+
+function computeGroupStats(images) {
+  const groups = {};
+  images.forEach(rec => {
+    const st = computeImageStats(rec);
+    if (!st) return;
+    const gName = rec.group || 'Default';
+    if (!groups[gName]) {
+      groups[gName] = {
+        name: gName,
+        n_images: 0,
+        n_edges: 0,
+        n_junctions: 0,
+        ratios: [],
+        total_length_px: 0,
+        densities: []
+      };
+    }
+    const g = groups[gName];
+    g.n_images += 1;
+    g.n_edges += st.n_edges;
+    g.n_junctions += st.n_junctions;
+    if (st.ratios) g.ratios.push(...st.ratios);
+    g.total_length_px += st.total_length_px || 0;
+    if (st.boundary_density) g.densities.push(st.boundary_density);
+  });
+
+  return Object.values(groups).map(g => {
+    g.ratios.sort((a, b) => a - b);
+    const n = g.ratios.length;
+    const mean = n ? g.ratios.reduce((s, r) => s + r, 0) / n : null;
+    const variance = (n && mean !== null) ? g.ratios.reduce((s, r) => s + (r - mean) ** 2, 0) / n : null;
+    const std = variance !== null ? Math.sqrt(variance) : null;
+
+    let median = null;
+    if (n > 0) {
+      const mid = Math.floor(n / 2);
+      median = n % 2 !== 0 ? g.ratios[mid] : (g.ratios[mid - 1] + g.ratios[mid]) / 2;
+    }
+
+    const min = n ? g.ratios[0] : null;
+    const max = n ? g.ratios[g.ratios.length - 1] : null;
+    const avg_density = g.densities.length ? (g.densities.reduce((s, d) => s + d, 0) / g.densities.length) : 0;
+
+    return {
+      group_name: g.name,
+      n_images: g.n_images,
+      n_edges: g.n_edges,
+      n_junctions: g.n_junctions,
+      mean_ratio: mean,
+      std_ratio: std,
+      median_ratio: median,
+      min_ratio: min,
+      max_ratio: max,
+      total_length_px: g.total_length_px,
+      avg_boundary_density: avg_density,
+      ratios: g.ratios
+    };
+  });
+}
+
 function computeImageStats(rec) {
   if (!rec) return null;
   const valid = rec.edges.filter(e => {
@@ -3391,6 +3452,7 @@ function computeImageStats(rec) {
 
   return {
     name: rec.name,
+    group: rec.group || 'Default',
     n_edges,
     n_junctions,
     mean_ratio: mean,
@@ -3407,23 +3469,26 @@ function computeImageStats(rec) {
 function csvEscape(v){ return `"${String(v).replace(/"/g,'""')}"`; }
 
 function buildCSVRows(images){
-  const rows = [['image','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete','included_in_stats']];
+  const rows = [['image','group','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete','included_in_stats']];
   images.forEach(rec=>{
+    const gName = rec.group || 'Default';
     rec.edges.forEach(e=>{
       if (e.includeInStats === undefined) {
         e.includeInStats = !e.incomplete;
       }
-      rows.push([rec.name, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
+      rows.push([rec.name, gName, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
         isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no', e.includeInStats?'yes':'no']);
     });
   });
   rows.push([]);
-  rows.push(['image','n_edges','n_junctions','mean_ratio','std_ratio','median_ratio','min_ratio','max_ratio','total_length_px','boundary_density']);
+  rows.push(['image','group','n_edges','n_junctions','mean_ratio','std_ratio','median_ratio','min_ratio','max_ratio','total_length_px','boundary_density']);
   images.forEach(rec=>{
     const st = computeImageStats(rec);
+    const gName = rec.group || 'Default';
     if(st && st.n_edges){
       rows.push([
         rec.name,
+        gName,
         st.n_edges,
         st.n_junctions,
         st.mean_ratio.toFixed(4),
@@ -3435,9 +3500,28 @@ function buildCSVRows(images){
         st.boundary_density.toFixed(6)
       ]);
     } else {
-      rows.push([rec.name, 0, st ? st.n_junctions : 0, '', '', '', '', '', '', '']);
+      rows.push([rec.name, gName, 0, st ? st.n_junctions : 0, '', '', '', '', '', '', '']);
     }
   });
+
+  rows.push([]);
+  rows.push(['group_name','n_images','total_edges','total_junctions','pooled_mean_ratio','pooled_std_ratio','pooled_median_ratio','min_ratio','max_ratio','avg_boundary_density']);
+  const groupStats = computeGroupStats(images);
+  groupStats.forEach(gst => {
+    rows.push([
+      gst.group_name,
+      gst.n_images,
+      gst.n_edges,
+      gst.n_junctions,
+      gst.mean_ratio !== null ? gst.mean_ratio.toFixed(4) : '',
+      gst.std_ratio !== null ? gst.std_ratio.toFixed(4) : '',
+      gst.median_ratio !== null ? gst.median_ratio.toFixed(4) : '',
+      gst.min_ratio !== null ? gst.min_ratio.toFixed(4) : '',
+      gst.max_ratio !== null ? gst.max_ratio.toFixed(4) : '',
+      gst.avg_boundary_density !== null ? gst.avg_boundary_density.toFixed(6) : ''
+    ]);
+  });
+
   return rows;
 }
 
@@ -3664,6 +3748,35 @@ function renderCharts() {
   }
 
   updateAllImagesTable(allStats);
+  const groupStats = computeGroupStats(images);
+  updateGroupTable(groupStats);
+}
+
+function updateGroupTable(groupStats) {
+  const tbody = document.getElementById('groupTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!groupStats || !groupStats.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:16px;">${getI18nStr('logNoImagesLoaded')}</td></tr>`;
+    return;
+  }
+
+  groupStats.forEach(gst => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight:600; color:var(--green);">${gst.group_name}</td>
+      <td>${gst.n_images}</td>
+      <td>${gst.n_edges}</td>
+      <td>${gst.n_junctions}</td>
+      <td style="font-weight:600;">${gst.mean_ratio !== null ? gst.mean_ratio.toFixed(4) : '—'}</td>
+      <td>${gst.std_ratio !== null ? gst.std_ratio.toFixed(4) : '—'}</td>
+      <td>${gst.median_ratio !== null ? gst.median_ratio.toFixed(4) : '—'}</td>
+      <td>${gst.min_ratio !== null ? `${gst.min_ratio.toFixed(3)} / ${gst.max_ratio.toFixed(3)}` : '—'}</td>
+      <td>${gst.avg_boundary_density ? gst.avg_boundary_density.toFixed(6) : '0'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 function updateAllImagesTable(allStats) {
@@ -3672,14 +3785,17 @@ function updateAllImagesTable(allStats) {
   tbody.innerHTML = '';
 
   if (!allStats || !allStats.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:16px;">${getI18nStr('logNoImagesLoaded')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--text-dim); padding:16px;">${getI18nStr('logNoImagesLoaded')}</td></tr>`;
     return;
   }
 
-  allStats.forEach(st => {
+  allStats.forEach((st, idx) => {
+    const rec = state.images[idx];
     const tr = document.createElement('tr');
+    const groupVal = (rec && rec.group) ? rec.group : 'Default';
     tr.innerHTML = `
       <td style="font-weight:600;">${st.name}</td>
+      <td><input type="text" class="group-edit-input" data-img-id="${rec ? rec.id : ''}" value="${groupVal}" style="width:100px; padding:3px 6px; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:4px;"></td>
       <td>${st.n_edges}</td>
       <td>${st.n_junctions}</td>
       <td style="color:var(--green); font-weight:600;">${st.mean_ratio !== null ? st.mean_ratio.toFixed(4) : '—'}</td>
@@ -3690,6 +3806,17 @@ function updateAllImagesTable(allStats) {
       <td>${st.boundary_density ? st.boundary_density.toFixed(6) : '0'}</td>
     `;
     tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.group-edit-input').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const imgId = e.target.getAttribute('data-img-id');
+      const targetImg = state.images.find(i => i.id === imgId);
+      if (targetImg) {
+        targetImg.group = e.target.value.trim() || 'Default';
+        renderCharts();
+      }
+    });
   });
 }
 
@@ -3807,6 +3934,50 @@ async function generatePDFReport(imagesToExport) {
     }
   }
 
+  // Group Statistics Summary Section in PDF
+  const groupStatsList = computeGroupStats(imagesToExport);
+  if (groupStatsList && groupStatsList.length > 0) {
+    if (y + 45 > pageHeight) {
+      pdf.addPage();
+      y = margin;
+    }
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 30, 30);
+    pdf.text('Group Statistics Summary', margin, y);
+    y += 6;
+
+    pdf.setFillColor(245, 248, 246);
+    pdf.setDrawColor(200, 220, 210);
+
+    groupStatsList.forEach(gst => {
+      if (y + 30 > pageHeight) {
+        pdf.addPage();
+        y = margin;
+      }
+      pdf.roundedRect(margin, y, pageWidth - 2 * margin, 24, 2, 2, 'FD');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(20, 80, 50);
+      pdf.text(`Group: ${gst.group_name} (${gst.n_images} image${gst.n_images > 1 ? 's' : ''})`, margin + 5, y + 7);
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(50, 50, 50);
+      const gw = (pageWidth - 2 * margin) / 3;
+      pdf.text(`Total Boundaries: ${gst.n_edges}`, margin + 5, y + 14);
+      pdf.text(`Total Junctions: ${gst.n_junctions}`, margin + gw + 5, y + 14);
+      pdf.text(`Pooled Mean Ratio: ${gst.mean_ratio !== null ? gst.mean_ratio.toFixed(4) : '—'}`, margin + 2 * gw + 5, y + 14);
+
+      pdf.text(`Std Deviation: ${gst.std_ratio !== null ? gst.std_ratio.toFixed(4) : '—'}`, margin + 5, y + 20);
+      pdf.text(`Median Ratio: ${gst.median_ratio !== null ? gst.median_ratio.toFixed(4) : '—'}`, margin + gw + 5, y + 20);
+      pdf.text(`Avg Density: ${gst.avg_boundary_density !== null ? gst.avg_boundary_density.toFixed(6) : '—'} px/px²`, margin + 2 * gw + 5, y + 20);
+
+      y += 28;
+    });
+    y += 5;
+  }
+
   // Individual Image Details
   for (let idx = 0; idx < imagesToExport.length; idx++) {
     const rec = imagesToExport[idx];
@@ -3825,27 +3996,28 @@ async function generatePDFReport(imagesToExport) {
 
     let iy = 30;
 
-    if (rec.canvas) {
+    if (rec.imgData) {
       const snapCanvas = document.createElement('canvas');
-      snapCanvas.width = rec.canvas.width;
-      snapCanvas.height = rec.canvas.height;
+      snapCanvas.width = rec.width;
+      snapCanvas.height = rec.height;
       const ctx = snapCanvas.getContext('2d');
 
-      ctx.drawImage(rec.canvas, 0, 0);
+      ctx.putImageData(rec.imgData, 0, 0);
 
       ctx.save();
       ctx.lineWidth = Math.max(2, Math.round(snapCanvas.width / 400));
-      ctx.font = `${Math.max(12, Math.round(snapCanvas.width / 60))}px sans-serif`;
 
       rec.edges.forEach(e => {
         if (!e.path || !e.path.length) return;
         ctx.beginPath();
-        ctx.moveTo(e.path[0].x, e.path[0].y);
-        for (let p = 1; p < e.path.length; p++) {
-          ctx.lineTo(e.path[p].x, e.path[p].y);
-        }
+        e.path.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p[0], p[1]);
+          else ctx.lineTo(p[0], p[1]);
+        });
         ctx.strokeStyle = isFinite(e.ratio) ? ratioColor(e.ratio) : '#888888';
+        ctx.setLineDash(e.incomplete ? [4, 3] : []);
         ctx.stroke();
+        ctx.setLineDash([]);
       });
 
       rec.nodes.forEach(n => {
@@ -3860,7 +4032,7 @@ async function generatePDFReport(imagesToExport) {
       ctx.restore();
 
       const snapUrl = snapCanvas.toDataURL('image/jpeg', 0.85);
-      const aspect = rec.canvas.height / rec.canvas.width;
+      const aspect = rec.height / rec.width;
       const maxImgW = pageWidth - 2 * margin;
       const maxImgH = 100;
       let displayW = maxImgW;
@@ -4029,6 +4201,7 @@ document.getElementById('btnSaveSession').addEventListener('click', () => {
     return {
       id: img.id,
       name: img.name,
+      group: img.group || 'Default',
       width: img.width,
       height: img.height,
       imgDataUrl: serializeImgData(img.imgData),
@@ -4111,6 +4284,7 @@ document.getElementById('sessionFileInput').addEventListener('change', async (e)
         const img = {
           id: sImg.id,
           name: sImg.name,
+          group: sImg.group || 'Default',
           width: sImg.width,
           height: sImg.height,
           imgData: imgData,

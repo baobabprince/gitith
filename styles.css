@@ -18,6 +18,11 @@
   h1 span{color:var(--green);}
   h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);
      margin:0 0 8px 0;border-bottom:1px solid var(--line);padding-bottom:6px;}
+  .collapsible-block > summary{list-style:none;cursor:pointer;}
+  .collapsible-block > summary::-webkit-details-marker{display:none;}
+  .collapsible-block > summary h2{display:flex;align-items:center;justify-content:space-between;}
+  .collapsible-block > summary h2::after{content:'+';color:var(--green);font-size:16px;line-height:1;}
+  .collapsible-block[open] > summary h2::after{content:'−';}
   #app{display:grid;grid-template-columns:300px 1fr 320px;grid-template-rows:52px 1fr;height:100vh;}
   header{grid-column:1/4;display:flex;align-items:center;justify-content:space-between;
     padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line);position:relative;}

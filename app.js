@@ -220,6 +220,8 @@ const els = {
   mergeVal: document.getElementById('mergeVal'),
   spurLenSlider: document.getElementById('spurLenSlider'),
   distanceFitMode: document.getElementById('distanceFitMode'),
+  distanceFitSlider: document.getElementById('distanceFitSlider'),
+  distanceFitSliderVal: document.getElementById('distanceFitSliderVal'),
   spurLenVal: document.getElementById('spurLenVal'),
   tabClassical: document.getElementById('tabClassical'),
   tabGemini: document.getElementById('tabGemini'),
@@ -252,7 +254,6 @@ const els = {
   cancelRedraw: document.getElementById('cancelRedraw'),
   chkSnapToJunctions: document.getElementById('chkSnapToJunctions'),
   modeHint: document.getElementById('modeHint'),
-  exportCurrent: document.getElementById('exportCurrent'),
   exportAll: document.getElementById('exportAll'),
   // New Open edge connect elements
   includeIncomplete: document.getElementById('includeIncomplete'),
@@ -437,6 +438,7 @@ function loadFile(file){
       samThreshold: 0.0,
       sigmaMin: 1.0,
       sigmaMax: 4.0,
+      distanceFitMode: 'deg1',
     };
     state.images.push(rec);
     state.activeId = rec.id;
@@ -712,6 +714,10 @@ function setActiveImage(id){
   els.sigmaMinVal.textContent = (rec.sigmaMin !== undefined ? rec.sigmaMin : 1.0).toFixed(1);
   els.sigmaMax.value = rec.sigmaMax !== undefined ? rec.sigmaMax : 4.0;
   els.sigmaMaxVal.textContent = (rec.sigmaMax !== undefined ? rec.sigmaMax : 4.0).toFixed(1);
+  const fitMode = rec.distanceFitMode || 'deg1';
+  if (els.distanceFitMode) els.distanceFitMode.value = fitMode;
+  if (els.distanceFitSlider) els.distanceFitSlider.value = fitMode === 'deg3' ? 3 : (fitMode === 'deg2' ? 2 : 1);
+  if (els.distanceFitSliderVal) els.distanceFitSliderVal.textContent = fitMode.replace('deg', '');
 
   // Show/hide appropriate panels based on selected binarization method
   els.panelSigmas.style.display = (rec.binMethod === 'frangi' || rec.binMethod === 'meijering') ? '' : 'none';
@@ -2520,6 +2526,7 @@ function calcEdgeFitDistance(path, mode) {
   }
   const T = t_vals[n - 1];
   if (T === 0) return 0;
+  for (let i = 0; i < n; i++) t_vals[i] /= T;
   const x_coords = path.map(p => p[0]);
   const y_coords = path.map(p => p[1]);
   const eff_deg = Math.min(deg, n - 1);
@@ -2527,7 +2534,7 @@ function calcEdgeFitDistance(path, mode) {
   const cx = polyfit(t_vals, x_coords, eff_deg);
   const cy = polyfit(t_vals, y_coords, eff_deg);
   const steps = Math.max(40, n * 4);
-  const dt = T / steps;
+  const dt = 1 / steps;
   function speed(t) {
     const dx = evalPolyDeriv(cx, t);
     const dy = evalPolyDeriv(cy, t);
@@ -2545,17 +2552,32 @@ function calcEdgeFitDistance(path, mode) {
 
 
 function getDistanceFitMode() {
-  return els.distanceFitMode ? els.distanceFitMode.value : (state.distanceFitMode || 'deg1');
+  const rec = activeImg();
+  return (rec && rec.distanceFitMode) || (els.distanceFitMode ? els.distanceFitMode.value : 'deg1') || 'deg1';
+}
+
+function getEdgeFitDistances(path) {
+  return {
+    deg1: calcEdgeFitDistance(path, 'deg1'),
+    deg2: calcEdgeFitDistance(path, 'deg2'),
+    deg3: calcEdgeFitDistance(path, 'deg3')
+  };
+}
+
+function applyEdgeFitDistances(edge, fitDistances, mode) {
+  edge.straightDeg1 = fitDistances.deg1;
+  edge.straightDeg2 = fitDistances.deg2;
+  edge.straightDeg3 = fitDistances.deg3;
+  edge.straight = fitDistances[mode] || fitDistances.deg1;
+  edge.ratio = edge.straight > 0 ? edge.length / edge.straight : NaN;
 }
 
 function recalculateEdgeDistances(rec) {
   if (!rec || !rec.edges) return;
-  const mode = getDistanceFitMode();
+  const mode = rec.distanceFitMode || 'deg1';
   rec.edges.forEach(e => {
     if (!e.path || e.path.length < 2) return;
-    const fitDist = calcEdgeFitDistance(e.path, mode);
-    e.straight = fitDist;
-    e.ratio = fitDist > 0 ? e.length / fitDist : NaN;
+    applyEdgeFitDistances(e, getEdgeFitDistances(e.path), mode);
   });
 }
 
@@ -2563,6 +2585,23 @@ function recalculateAllImageEdgeDistances() {
   if (!state.images) return;
   state.images.forEach(rec => recalculateEdgeDistances(rec));
 }
+
+function setDistanceFitMode(mode) {
+  const rec = activeImg();
+  if (rec) rec.distanceFitMode = mode;
+  if (els.distanceFitMode) els.distanceFitMode.value = mode;
+  if (els.distanceFitSlider) els.distanceFitSlider.value = mode === 'deg3' ? 3 : (mode === 'deg2' ? 2 : 1);
+  if (els.distanceFitSliderVal) els.distanceFitSliderVal.textContent = mode.replace('deg', '');
+  if (rec) recalculateEdgeDistances(rec);
+  updateStatsPanel();
+  refreshImgList();
+  drawOverlay();
+  renderEdgeTable();
+  log(getI18nStr('logDistanceFitChanged', {mode: mode.replace('deg', '')}));
+}
+
+if (els.distanceFitMode) els.distanceFitMode.addEventListener('change', () => setDistanceFitMode(els.distanceFitMode.value));
+if (els.distanceFitSlider) els.distanceFitSlider.addEventListener('input', () => setDistanceFitMode(`deg${els.distanceFitSlider.value}`));
 
 function dist(x1,y1,x2,y2){ return Math.hypot(x2-x1,y2-y1); }
 function pathLength(path){
@@ -3604,14 +3643,21 @@ function computeImageStats(rec) {
 function csvEscape(v){ return `"${String(v).replace(/"/g,'""')}"`; }
 
 function buildCSVRows(images){
-  const rows = [['image','group','edge_id','node1','node2','path_length_px','straight_distance_px','ratio','manual_edit','incomplete','included_in_stats']];
+  const rows = [['image','group','edge_id','node1','node2','path_length_px','straight_distance_deg1_px','straight_distance_deg2_px','straight_distance_deg3_px','ratio_deg1','ratio_deg2','ratio_deg3','selected_ratio','manual_edit','incomplete','included_in_stats']];
   images.forEach(rec=>{
     const gName = rec.group || 'Default';
     rec.edges.forEach(e=>{
       if (e.includeInStats === undefined) {
         e.includeInStats = !e.incomplete;
       }
-      rows.push([rec.name, gName, e.id, e.n1, e.n2||'', e.length.toFixed(2), e.straight.toFixed(2),
+      const fitDistances = getEdgeFitDistances(e.path);
+      const mode = rec.distanceFitMode || 'deg1';
+      applyEdgeFitDistances(e, fitDistances, mode);
+      rows.push([rec.name, gName, e.id, e.n1, e.n2||'', e.length.toFixed(2),
+        fitDistances.deg1.toFixed(2), fitDistances.deg2.toFixed(2), fitDistances.deg3.toFixed(2),
+        fitDistances.deg1 > 0 ? (e.length / fitDistances.deg1).toFixed(4) : '',
+        fitDistances.deg2 > 0 ? (e.length / fitDistances.deg2).toFixed(4) : '',
+        fitDistances.deg3 > 0 ? (e.length / fitDistances.deg3).toFixed(4) : '',
         isFinite(e.ratio)? e.ratio.toFixed(4):'', e.manual?'yes':'no', e.incomplete?'yes':'no', e.includeInStats?'yes':'no']);
     });
   });
@@ -3669,11 +3715,6 @@ function downloadCSV(rows, filename){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-els.exportCurrent.onclick = ()=>{
-  const rec = activeImg(); if(!rec){ log(getI18nStr('logNoImage')); return; }
-  downloadCSV(buildCSVRows([rec]), `tj_undulation_${rec.name.replace(/\.[^.]+$/,'')}.csv`);
-  log(getI18nStr('logExportingCurrent', {name: rec.name}));
-};
 els.exportAll.onclick = ()=>{
   if(!state.images.length){ log(getI18nStr('logNoImagesLoaded')); return; }
   downloadCSV(buildCSVRows(state.images), `tj_undulation_all_images.csv`);
@@ -3685,11 +3726,47 @@ let chartHistogramInst = null;
 let chartComparisonInst = null;
 let chartDensityInst = null;
 
+const groupStdErrorBarsPlugin = {
+  id: 'groupStdErrorBars',
+  afterDatasetsDraw(chart, args, options) {
+    const values = options.values || [];
+    const means = options.means || [];
+    const meta = chart.getDatasetMeta(0);
+    const yScale = chart.scales.y;
+    if (!meta || !yScale) return;
+
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    values.forEach((std, index) => {
+      const bar = meta.data[index];
+      if (!bar || !isFinite(std)) return;
+      const x = bar.x;
+      const mean = means[index];
+      if (!isFinite(mean)) return;
+      const top = yScale.getPixelForValue(Math.max(1, mean + std));
+      const bottom = yScale.getPixelForValue(Math.max(1, mean - std));
+      const cap = 5;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
+      ctx.moveTo(x - cap, top);
+      ctx.lineTo(x + cap, top);
+      ctx.moveTo(x - cap, bottom);
+      ctx.lineTo(x + cap, bottom);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+};
+
 function renderCharts() {
   if (typeof Chart === 'undefined') return;
 
   const images = state.images;
   const allStats = images.map(rec => computeImageStats(rec)).filter(Boolean);
+  const groupStats = computeGroupStats(images);
 
   // Update Overview Cards
   const totalImages = images.length;
@@ -3765,6 +3842,7 @@ function renderCharts() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        devicePixelRatio: 2,
         plugins: {
           legend: { display: false },
           tooltip: { mode: 'index', intersect: false }
@@ -3777,10 +3855,12 @@ function renderCharts() {
     });
   }
 
-  // 2. Cross-Image Comparison Chart (Mean & Median Ratio)
-  const compLabels = allStats.map(st => st.name.length > 15 ? st.name.substring(0, 12) + '...' : st.name);
-  const compMeans = allStats.map(st => st.mean_ratio !== null ? Number(st.mean_ratio.toFixed(3)) : 0);
-  const compMedians = allStats.map(st => st.median_ratio !== null ? Number(st.median_ratio.toFixed(3)) : 0);
+  // 2. Group Comparison Chart (Mean +/- SD & Median Ratio)
+  const compLabels = groupStats.map(gst => gst.group_name.length > 18 ? gst.group_name.substring(0, 15) + '...' : gst.group_name);
+  const compMeans = groupStats.map(gst => gst.mean_ratio !== null ? Number(gst.mean_ratio.toFixed(3)) : 0);
+  const compMedians = groupStats.map(gst => gst.median_ratio !== null ? Number(gst.median_ratio.toFixed(3)) : 0);
+  const compStd = groupStats.map(gst => gst.std_ratio !== null ? Number(gst.std_ratio.toFixed(3)) : 0);
+  const comparisonMax = Math.max(1.1, ...groupStats.map((gst, index) => compMeans[index] + compStd[index]));
 
   const canvasC = document.getElementById('chartComparison');
   if (canvasC) {
@@ -3791,7 +3871,7 @@ function renderCharts() {
         labels: compLabels,
         datasets: [
           {
-            label: getI18nStr('thImgMean') || 'Mean Ratio',
+            label: `${getI18nStr('thImgMean') || 'Mean Ratio'} ± SD`,
             data: compMeans,
             backgroundColor: 'rgba(31, 122, 82, 0.7)',
             borderColor: '#39ff9e',
@@ -3808,23 +3888,26 @@ function renderCharts() {
           }
         ]
       },
+      plugins: [groupStdErrorBarsPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        devicePixelRatio: 2,
         plugins: {
-          legend: { labels: { color: '#d0dfd8', font: { size: 11 } } }
+          legend: { labels: { color: '#d0dfd8', font: { size: 11 } } },
+          groupStdErrorBars: { values: compStd, means: compMeans }
         },
         scales: {
           x: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 1.0 }
+          y: { ticks: { color: '#8faba0', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 1.0, suggestedMax: comparisonMax }
         }
       }
     });
   }
 
-  // 3. Junctions & Density Chart
-  const densityVals = allStats.map(st => Number((st.boundary_density * 1000).toFixed(3)));
-  const junctionVals = allStats.map(st => st.n_junctions);
+  // 3. Group Junctions & Density Chart
+  const densityVals = groupStats.map(gst => Number((gst.avg_boundary_density * 1000).toFixed(3)));
+  const junctionVals = groupStats.map(gst => gst.n_junctions);
 
   const canvasD = document.getElementById('chartDensity');
   if (canvasD) {
@@ -3858,6 +3941,7 @@ function renderCharts() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        devicePixelRatio: 2,
         plugins: {
           legend: { labels: { color: '#d0dfd8', font: { size: 11 } } }
         },
@@ -3883,7 +3967,6 @@ function renderCharts() {
   }
 
   updateAllImagesTable(allStats);
-  const groupStats = computeGroupStats(images);
   updateGroupTable(groupStats);
 }
 
@@ -4033,41 +4116,38 @@ async function generatePDFReport(imagesToExport) {
 
   y += 28;
 
-  // Add Chart Snapshots
+  // Add chart snapshots while preserving their aspect ratio and page bounds.
   const chartHistogramCanvas = document.getElementById('chartHistogram');
   const chartComparisonCanvas = document.getElementById('chartComparison');
 
-  if (chartHistogramCanvas) {
+  const addChartSnapshot = (canvas, title) => {
+    if (!canvas) return;
     try {
-      const histDataUrl = chartHistogramCanvas.toDataURL('image/png');
+      const maxW = pageWidth - 2 * margin - 15;
+      const maxH = 70;
+      const canvasW = Math.max(1, canvas.width);
+      const canvasH = Math.max(1, canvas.height);
+      const scale = Math.min(maxW / canvasW, maxH / canvasH);
+      const imgW = canvasW * scale;
+      const imgH = canvasH * scale;
+      if (y + 8 + imgH > pageHeight - margin) {
+        pdf.addPage();
+        y = margin;
+      }
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Ratio Distribution Histogram', margin, y);
+      pdf.setTextColor(30, 30, 30);
+      pdf.text(title, margin, y);
       y += 4;
-      const imgW = pageWidth - 2 * margin;
-      const imgH = 55;
-      pdf.addImage(histDataUrl, 'PNG', margin, y, imgW, imgH);
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', (pageWidth - imgW) / 2, y, imgW, imgH);
       y += imgH + 10;
     } catch(e) {
-      console.warn('Could not export histogram chart to PDF', e);
+      console.warn(`Could not export ${title} chart to PDF`, e);
     }
-  }
+  };
 
-  if (chartComparisonCanvas && y + 60 < pageHeight) {
-    try {
-      const compDataUrl = chartComparisonCanvas.toDataURL('image/png');
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Cross-Image Mean & Median Ratio Comparison', margin, y);
-      y += 4;
-      const imgW = pageWidth - 2 * margin;
-      const imgH = 55;
-      pdf.addImage(compDataUrl, 'PNG', margin, y, imgW, imgH);
-      y += imgH + 10;
-    } catch(e) {
-      console.warn('Could not export comparison chart to PDF', e);
-    }
-  }
+  addChartSnapshot(chartHistogramCanvas, 'Ratio Distribution Histogram');
+  addChartSnapshot(chartComparisonCanvas, 'Group Mean & Median Ratio Comparison');
 
   // Group Statistics Summary Section in PDF
   const groupStatsList = computeGroupStats(imagesToExport);
@@ -4245,27 +4325,13 @@ if (rightTabResults && rightTabCharts) {
   };
 }
 
-const exportPDFCurrent = document.getElementById('exportPDFCurrent');
 const exportPDFAll = document.getElementById('exportPDFAll');
-const btnExportPDFCurrentCharts = document.getElementById('btnExportPDFCurrentCharts');
 const btnExportPDFCharts = document.getElementById('btnExportPDFCharts');
 
-if (exportPDFCurrent) {
-  exportPDFCurrent.onclick = () => {
-    const rec = activeImg(); if (!rec) { log(getI18nStr('logNoImage')); return; }
-    generatePDFReport([rec]);
-  };
-}
 if (exportPDFAll) {
   exportPDFAll.onclick = () => {
     if (!state.images.length) { log(getI18nStr('logNoImagesLoaded')); return; }
     generatePDFReport(state.images);
-  };
-}
-if (btnExportPDFCurrentCharts) {
-  btnExportPDFCurrentCharts.onclick = () => {
-    const rec = activeImg(); if (!rec) { log(getI18nStr('logNoImage')); return; }
-    generatePDFReport([rec]);
   };
 }
 if (btnExportPDFCharts) {
@@ -4366,6 +4432,7 @@ document.getElementById('btnSaveSession').addEventListener('click', () => {
       samThreshold: img.samThreshold,
       sigmaMin: img.sigmaMin,
       sigmaMax: img.sigmaMax,
+      distanceFitMode: img.distanceFitMode || 'deg1',
       microsamFullMaskBase64: img.microsamFullMask ? uint8ArrayToBase64(img.microsamFullMask) : null,
       microsamBinaryBase64: img.microsamBinary ? uint8ArrayToBase64(img.microsamBinary) : null,
       microsamSkeletonReadyBase64: img.microsamSkeletonReady ? uint8ArrayToBase64(img.microsamSkeletonReady) : null,
@@ -4449,6 +4516,7 @@ document.getElementById('sessionFileInput').addEventListener('change', async (e)
           samThreshold: sImg.samThreshold,
           sigmaMin: sImg.sigmaMin,
           sigmaMax: sImg.sigmaMax,
+          distanceFitMode: sImg.distanceFitMode || 'deg1',
           microsamFullMask: sImg.microsamFullMaskBase64 ? base64ToUint8Array(sImg.microsamFullMaskBase64) : null,
           microsamBinary: sImg.microsamBinaryBase64 ? base64ToUint8Array(sImg.microsamBinaryBase64) : null,
           microsamSkeletonReady: sImg.microsamSkeletonReadyBase64 ? base64ToUint8Array(sImg.microsamSkeletonReadyBase64) : null,

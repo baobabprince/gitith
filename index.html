@@ -34,8 +34,11 @@
     <button id="tabMobView" data-i18n="tabMobileView">תצוגה</button>
     <button id="tabMobEdit" data-i18n="tabMobileEdit">עריכה</button>
     <button id="tabMobResults" data-i18n="tabMobileResults">תוצאות</button>
-    <button id="tabMobCharts" data-i18n="tabMobileCharts">גרפים</button>
-    <button id="tabMobLog" data-i18n="tabMobileLog">לוג</button>
+    <button id="tabMobMore" class="more-tab-btn" aria-expanded="false" aria-controls="mobileMoreMenu" data-i18n="tabMobileMore">עוד</button>
+    <div id="mobileMoreMenu" class="mobile-more-menu" hidden>
+      <button id="tabMobCharts" data-i18n="tabMobileCharts">גרפים</button>
+      <button id="tabMobLog" data-i18n="tabMobileLog">לוג</button>
+    </div>
   </nav>
 
   <!-- Guided Tour Elements -->
@@ -59,7 +62,11 @@
   <div id="left">
     <div class="block" id="blockImages">
       <h2 data-i18n="lblImages">1. תמונות</h2>
-      <input type="file" id="fileInput" accept="image/*,.pptx" multiple="">
+      <label class="upload-zone" for="fileInput">
+        <span class="upload-zone-title" data-i18n="uploadImages">הוסף תמונות</span>
+        <span class="upload-zone-hint" data-i18n="uploadHint">PNG, JPG או PPTX · אפשר לבחור כמה קבצים</span>
+        <input type="file" id="fileInput" accept="image/*,.pptx" multiple="">
+      </label>
       <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
       <div class="row" style="margin-top:8px; gap:6px;">
         <button id="btnSaveSession" style="flex:1;" data-i18n="btnSaveSession">שמור סשן 💾</button>
@@ -70,9 +77,10 @@
     </div>
 
     <details class="block collapsible-block" id="blockBinarization">
-      <summary><h2 data-i18n="lblBinarization">2. עיבוד מקדים ובינריזציה</h2></summary>
+      <summary><h2 data-i18n="lblBinarization">2. הגדרות זיהוי</h2></summary>
+      <div class="basic-settings">
       <label class="small">
-        <span data-i18n="lblBinMethod">שיטת בינריזציה:</span>
+        <span data-i18n="lblBinMethod">שיטת הפרדת דפנות:</span>
         <span class="tooltip-container">
           <span class="tooltip-icon">?</span>
           <span class="tooltip-content" data-i18n="hintTooltipBinMethod"></span>
@@ -154,7 +162,7 @@
         <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled="">
 
         <label class="small" style="margin-top:6px;">
-          <span data-i18n="lblSensitivity">רגישות / היסט (C):</span>
+          <span data-i18n="lblSensitivity">רגישות לזיהוי (C):</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
             <span class="tooltip-content" data-i18n="hintTooltipSensitivity"></span>
@@ -173,7 +181,10 @@
         </label>
         <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled="">
       </div>
+      </div>
 
+      <details class="advanced-settings">
+        <summary data-i18n="lblAdvancedSettings">הגדרות מתקדמות</summary>
       <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
         <label class="small" style="display:flex; align-items:center; gap:6px;">
           <input type="checkbox" id="enableMedian" disabled="">
@@ -239,7 +250,7 @@
 
         <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
           <input type="checkbox" id="removeIslands" checked="" disabled="">
-          <span data-i18n="lblRemoveIslands">הסרת איי רעש רקע</span>
+          <span data-i18n="lblRemoveIslands">הסר רעשים מבודדים</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
             <span class="tooltip-content" data-i18n="hintTooltipRemoveIslands"></span>
@@ -257,6 +268,7 @@
           <input type="range" id="islandSize" min="10" max="1000" value="100" disabled="">
         </div>
       </div>
+      </details>
 
     </details>
 
@@ -358,17 +370,17 @@
       </label>
       <input type="range" id="openEdgeRadius" min="5" max="150" value="25">
       <div class="row" style="margin-top:8px;">
-        <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר קצוות פתוחים</button>
+        <button id="btnConnectOpen" style="width:100%;" data-i18n="btnConnectOpen">חבר דפנות לא שלמות</button>
       </div>
     </div>
 
     <div class="block" id="blockManualEdit">
       <h2 data-i18n="lblManualEdit">4. עריכה ידנית</h2>
       <div class="modebar">
-        <button id="modeSelect" class="active-mode" data-i18n="modeSelect">בחירה</button>
+        <button id="modeSelect" class="active-mode" data-i18n="modeSelect">בחר דופן</button>
         <button id="modeAddNode" data-i18n="modeAddNode">הוספת צומת</button>
         <button id="modeRemoveNode" data-i18n="modeRemoveNode">הסרת צומת</button>
-        <button id="modeRedraw" data-i18n="modeRedraw">ציור דופן</button>
+        <button id="modeRedraw" data-i18n="modeRedraw">צייר דופן מחדש</button>
       </div>
       <div id="redrawControls" class="row" style="display:none; align-items:center; gap:10px; margin-bottom:8px;">
         <button id="finishRedraw" class="primary" data-i18n="finishRedraw">סיים ציור</button>
@@ -458,7 +470,7 @@
       <h2><span data-i18n="lblEdgeTable">טבלת דפנות</span><span id="edgeCountLabel" style="font-weight:600; margin-left:8px;">(N=0)</span></h2>
       <div id="edgeTableWrap">
         <table id="edgeTable">
-          <thead><tr><th id="thNodesHeader" class="sortable" data-i18n="thNodes">#</th><th id="thActualHeader" class="sortable" data-i18n="thActual">אורך בפועל</th><th id="thStraightHeader" class="sortable" data-i18n="thStraight">מרחק ישר</th><th id="thRatioHeader" class="sortable" data-i18n="thRatio">יחס</th><th id="thIncludeHeader" class="sortable" style="text-align:center;" data-i18n="thInclude">כלול בסטט'</th><th></th></tr></thead>
+          <thead><tr><th id="thNodesHeader" class="sortable" data-i18n="thNodes">#</th><th id="thActualHeader" class="sortable" data-i18n="thActual">אורך בפועל</th><th id="thStraightHeader" class="sortable" data-i18n="thStraight">מרחק ייחוס</th><th id="thRatioHeader" class="sortable" data-i18n="thRatio">יחס</th><th id="thIncludeHeader" class="sortable" style="text-align:center;" data-i18n="thInclude">כלול בסטט'</th><th></th></tr></thead>
           <tbody id="edgeTableBody"></tbody>
         </table>
       </div>

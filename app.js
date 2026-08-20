@@ -340,7 +340,14 @@ function setMobileTab(tabId) {
   buttons.forEach(btn => btn.classList.remove('active'));
 
   // Remove tab-classes from app
-  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results', 'tab-log');
+  app.classList.remove('tab-images', 'tab-settings', 'tab-view', 'tab-edit', 'tab-results', 'tab-charts', 'tab-log');
+  const moreMenu = document.getElementById('mobileMoreMenu');
+  const moreButton = document.getElementById('tabMobMore');
+  if (moreMenu) moreMenu.hidden = true;
+  if (moreButton) {
+    moreButton.classList.remove('active');
+    moreButton.setAttribute('aria-expanded', 'false');
+  }
 
   // Add selected tab
   if (tabId === 'images') {
@@ -361,10 +368,12 @@ function setMobileTab(tabId) {
   } else if (tabId === 'charts') {
     app.classList.add('tab-charts');
     document.getElementById('tabMobCharts').classList.add('active');
+    if (moreButton) moreButton.classList.add('active');
     renderCharts();
   } else if (tabId === 'log') {
     app.classList.add('tab-log');
     document.getElementById('tabMobLog').classList.add('active');
+    if (moreButton) moreButton.classList.add('active');
   }
 
   // Defer resetZoomPan so the #center container renders fully with its true dimensions first.
@@ -381,7 +390,14 @@ document.getElementById('tabMobSettings').addEventListener('click', () => setMob
 document.getElementById('tabMobView').addEventListener('click', () => setMobileTab('view'));
 document.getElementById('tabMobEdit').addEventListener('click', () => setMobileTab('edit'));
 document.getElementById('tabMobResults').addEventListener('click', () => setMobileTab('results'));
-  document.getElementById('tabMobCharts').addEventListener('click', () => setMobileTab('charts'));
+document.getElementById('tabMobMore').addEventListener('click', () => {
+  const moreMenu = document.getElementById('mobileMoreMenu');
+  const moreButton = document.getElementById('tabMobMore');
+  const isOpen = moreMenu.hidden;
+  moreMenu.hidden = !isOpen;
+  moreButton.setAttribute('aria-expanded', String(isOpen));
+});
+document.getElementById('tabMobCharts').addEventListener('click', () => setMobileTab('charts'));
 document.getElementById('tabMobLog').addEventListener('click', () => setMobileTab('log'));
 
 
@@ -4038,6 +4054,128 @@ function updateAllImagesTable(allStats) {
   });
 }
 
+function createPdfHistogramChart() {
+  if (!window.Chart) return null;
+
+  const source = document.getElementById('chartHistogram');
+  if (!source || !chartHistogramInst) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1400;
+  canvas.height = 520;
+  const sourceData = chartHistogramInst.data;
+
+  const chart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: sourceData.labels,
+      datasets: [{
+        label: sourceData.datasets[0]?.label || 'Ratio',
+        data: sourceData.datasets[0]?.data || [],
+        backgroundColor: '#2f6f55',
+        borderColor: '#1d4938',
+        borderWidth: 2,
+        borderRadius: 5
+      }]
+    },
+    options: {
+      responsive: false,
+      animation: false,
+      devicePixelRatio: 1,
+      layout: { padding: { top: 18, right: 28, bottom: 18, left: 18 } },
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#24352b', font: { family: 'Arial', size: 18 }, maxRotation: 35, minRotation: 0 },
+          grid: { color: '#d8e1db' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#24352b', font: { family: 'Arial', size: 18 } },
+          grid: { color: '#d8e1db' }
+        }
+      }
+    }
+  });
+
+  canvas.__pdfChart = chart;
+  return canvas;
+}
+
+function createPdfComparisonChart(groupStats) {
+  if (!window.Chart || !groupStats || !groupStats.length) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1400;
+  canvas.height = 620;
+
+  const labels = groupStats.map(gst => gst.group_name);
+  const means = groupStats.map(gst => gst.mean_ratio !== null ? Number(gst.mean_ratio.toFixed(3)) : 0);
+  const medians = groupStats.map(gst => gst.median_ratio !== null ? Number(gst.median_ratio.toFixed(3)) : 0);
+  const std = groupStats.map(gst => gst.std_ratio !== null ? Number(gst.std_ratio.toFixed(3)) : 0);
+  const maxValue = Math.max(1, ...means.map((mean, index) => mean + std[index]), ...medians);
+
+  const chart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Mean Ratio +/- SD',
+          data: means,
+          backgroundColor: '#2f6f55',
+          borderColor: '#1d4938',
+          borderWidth: 2,
+          borderRadius: 5,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72
+        },
+        {
+          label: 'Median Ratio',
+          data: medians,
+          backgroundColor: '#d59f00',
+          borderColor: '#8a6800',
+          borderWidth: 2,
+          borderRadius: 5,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72
+        }
+      ]
+    },
+    plugins: [groupStdErrorBarsPlugin],
+    options: {
+      responsive: false,
+      animation: false,
+      devicePixelRatio: 1,
+      layout: { padding: { top: 18, right: 28, bottom: 18, left: 18 } },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#24352b', font: { family: 'Arial', size: 20 }, padding: 24 }
+        },
+        groupStdErrorBars: { values: std, means }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#24352b', font: { family: 'Arial', size: 18 }, maxRotation: 35, minRotation: 0 },
+          grid: { color: '#d8e1db' }
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: maxValue * 1.12,
+          ticks: { color: '#24352b', font: { family: 'Arial', size: 18 } },
+          grid: { color: '#d8e1db' }
+        }
+      }
+    }
+  });
+
+  canvas.__pdfChart = chart;
+  return canvas;
+}
+
 /* ===================== PDF Report Generation ===================== */
 async function generatePDFReport(imagesToExport) {
   if (!imagesToExport || !imagesToExport.length) {
@@ -4099,26 +4237,31 @@ async function generatePDFReport(imagesToExport) {
   const validMeans = allStats.filter(st => st.mean_ratio !== null).map(st => st.mean_ratio);
   const overallMean = validMeans.length ? (validMeans.reduce((s, m) => s + m, 0) / validMeans.length) : 0;
 
-  // Draw Summary Stats Box
-  pdf.setFillColor(245, 248, 246);
-  pdf.setDrawColor(200, 220, 210);
-  pdf.roundedRect(margin, y, pageWidth - 2 * margin, 22, 3, 3, 'FD');
-
-  pdf.setFontSize(10);
-  pdf.setTextColor(40, 60, 50);
+  // Use two roomy columns so long labels remain readable on A4.
+  const summaryW = pageWidth - 2 * margin;
+  const summaryColW = (summaryW - 4) / 2;
+  const summaryRows = [
+    [`Total Images: ${totalImg}`, `Total Boundaries: ${totalEdges}`],
+    [`Total Junctions: ${totalJunctions}`, `Overall Mean Ratio: ${overallMean ? overallMean.toFixed(4) : '—'}`]
+  ];
   pdf.setFont('helvetica', 'normal');
-
-  const colW = (pageWidth - 2 * margin) / 4;
-  pdf.text(`Total Images: ${totalImg}`, margin + 5, y + 9);
-  pdf.text(`Total Boundaries: ${totalEdges}`, margin + colW + 5, y + 9);
-  pdf.text(`Total Junctions: ${totalJunctions}`, margin + 2 * colW + 5, y + 9);
-  pdf.text(`Overall Mean Ratio: ${overallMean ? overallMean.toFixed(4) : '—'}`, margin + 3 * colW + 5, y + 9);
-
-  y += 28;
+  pdf.setFontSize(9.5);
+  summaryRows.forEach((row, rowIndex) => {
+    row.forEach((label, colIndex) => {
+      const x = margin + colIndex * (summaryColW + 4);
+      const cardY = y + rowIndex * 15;
+      pdf.setFillColor(245, 248, 246);
+      pdf.setDrawColor(200, 220, 210);
+      pdf.roundedRect(x, cardY, summaryColW, 12, 2, 2, 'FD');
+      pdf.setTextColor(40, 60, 50);
+      pdf.text(label, x + 4, cardY + 7.5, { maxWidth: summaryColW - 8 });
+    });
+  });
+  y += 38;
 
   // Add chart snapshots while preserving their aspect ratio and page bounds.
-  const chartHistogramCanvas = document.getElementById('chartHistogram');
-  const chartComparisonCanvas = document.getElementById('chartComparison');
+  const chartHistogramCanvas = createPdfHistogramChart();
+  const chartComparisonCanvas = createPdfComparisonChart(computeGroupStats(imagesToExport));
 
   const addChartSnapshot = (canvas, title) => {
     if (!canvas) return;
@@ -4148,6 +4291,8 @@ async function generatePDFReport(imagesToExport) {
 
   addChartSnapshot(chartHistogramCanvas, 'Ratio Distribution Histogram');
   addChartSnapshot(chartComparisonCanvas, 'Group Mean & Median Ratio Comparison');
+  if (chartHistogramCanvas) chartHistogramCanvas.__pdfChart?.destroy();
+  if (chartComparisonCanvas) chartComparisonCanvas.__pdfChart?.destroy();
 
   // Group Statistics Summary Section in PDF
   const groupStatsList = computeGroupStats(imagesToExport);
@@ -4170,7 +4315,7 @@ async function generatePDFReport(imagesToExport) {
         pdf.addPage();
         y = margin;
       }
-      pdf.roundedRect(margin, y, pageWidth - 2 * margin, 24, 2, 2, 'FD');
+      pdf.roundedRect(margin, y, pageWidth - 2 * margin, 30, 2, 2, 'FD');
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(20, 80, 50);
@@ -4179,16 +4324,16 @@ async function generatePDFReport(imagesToExport) {
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(50, 50, 50);
-      const gw = (pageWidth - 2 * margin) / 3;
+      const gw = (pageWidth - 2 * margin - 10) / 2;
       pdf.text(`Total Boundaries: ${gst.n_edges}`, margin + 5, y + 14);
-      pdf.text(`Total Junctions: ${gst.n_junctions}`, margin + gw + 5, y + 14);
-      pdf.text(`Pooled Mean Ratio: ${gst.mean_ratio !== null ? gst.mean_ratio.toFixed(4) : '—'}`, margin + 2 * gw + 5, y + 14);
+      pdf.text(`Total Junctions: ${gst.n_junctions}`, margin + gw + 10, y + 14);
+      pdf.text(`Pooled Mean Ratio: ${gst.mean_ratio !== null ? gst.mean_ratio.toFixed(4) : '—'}`, margin + 5, y + 22);
 
-      pdf.text(`Std Deviation: ${gst.std_ratio !== null ? gst.std_ratio.toFixed(4) : '—'}`, margin + 5, y + 20);
-      pdf.text(`Median Ratio: ${gst.median_ratio !== null ? gst.median_ratio.toFixed(4) : '—'}`, margin + gw + 5, y + 20);
-      pdf.text(`Avg Density: ${gst.avg_boundary_density !== null ? gst.avg_boundary_density.toFixed(6) : '—'} px/px²`, margin + 2 * gw + 5, y + 20);
+      pdf.text(`Std Deviation: ${gst.std_ratio !== null ? gst.std_ratio.toFixed(4) : '—'}`, margin + gw + 10, y + 22);
+      pdf.text(`Median Ratio: ${gst.median_ratio !== null ? gst.median_ratio.toFixed(4) : '—'}`, margin + 5, y + 28);
+      pdf.text(`Avg Density: ${gst.avg_boundary_density !== null ? gst.avg_boundary_density.toFixed(6) : '—'} px/px²`, margin + gw + 10, y + 28, { maxWidth: gw - 4 });
 
-      y += 28;
+      y += 34;
     });
     y += 5;
   }
@@ -4280,7 +4425,7 @@ async function generatePDFReport(imagesToExport) {
     const c2 = margin + (pageWidth - 2 * margin) / 2 + 6;
 
     pdf.text(`Boundaries Analyzed: ${st.n_edges}`, c1, iy + 8);
-    pdf.text(`Junction Points (CN≥3): ${st.n_junctions}`, c2, iy + 8);
+    pdf.text(`Junction Points (CN >= 3): ${st.n_junctions}`, c2, iy + 8);
 
     pdf.text(`Mean Ratio: ${st.mean_ratio !== null ? st.mean_ratio.toFixed(4) : '—'}`, c1, iy + 16);
     pdf.text(`Std Deviation: ${st.std_ratio !== null ? st.std_ratio.toFixed(4) : '—'}`, c2, iy + 16);

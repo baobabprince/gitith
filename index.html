@@ -59,7 +59,7 @@
   <div id="left">
     <div class="block" id="blockImages">
       <h2 data-i18n="lblImages">1. תמונות</h2>
-      <input type="file" id="fileInput" accept="image/*,.pptx" multiple>
+      <input type="file" id="fileInput" accept="image/*,.pptx" multiple="">
       <button id="btnLoadExample" style="width:100%; margin-top:8px;" data-i18n="btnLoadExample">טען תמונת דוגמה</button>
       <div class="row" style="margin-top:8px; gap:6px;">
         <button id="btnSaveSession" style="flex:1;" data-i18n="btnSaveSession">שמור סשן 💾</button>
@@ -78,7 +78,7 @@
           <span class="tooltip-content" data-i18n="hintTooltipBinMethod"></span>
         </span>
       </label>
-      <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled>
+      <select id="binMethod" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;" disabled="">
         <option value="adaptive" data-i18n="optAdaptive">אדפטיבית (מקומית)</option>
         <option value="global" data-i18n="optGlobal">גלובלית (Otsu)</option>
         <option value="microsam" data-i18n="optMicroSam">MicroSAM (SlimSAM)</option>
@@ -95,7 +95,7 @@
           </span>
           <span id="sigmaMinVal">1.0</span>
         </label>
-        <input type="range" id="sigmaMin" min="0.1" max="10.0" step="0.1" value="1.0" disabled>
+        <input type="range" id="sigmaMin" min="0.1" max="10.0" step="0.1" value="1.0" disabled="">
 
         <label class="small" style="margin-top:6px;">
           <span data-i18n="lblSigmaMax">מקסימום סיגמה (עובי מקסימלי):</span>
@@ -105,7 +105,7 @@
           </span>
           <span id="sigmaMaxVal">4.0</span>
         </label>
-        <input type="range" id="sigmaMax" min="0.5" max="20.0" step="0.5" value="4.0" disabled>
+        <input type="range" id="sigmaMax" min="0.5" max="20.0" step="0.5" value="4.0" disabled="">
       </div>
 
       <div id="panelMicroSam" style="display:none; margin-bottom: 8px;">
@@ -117,7 +117,7 @@
           </span>
           <span id="samGridSizeVal">10</span>
         </label>
-        <input type="range" id="samGridSize" min="4" max="24" step="2" value="10" disabled>
+        <input type="range" id="samGridSize" min="4" max="24" step="2" value="10" disabled="">
 
         <label class="small" style="margin-top:6px;">
           <span data-i18n="lblSamThreshold">סף מסיכת MicroSAM:</span>
@@ -127,7 +127,7 @@
           </span>
           <span id="samThresholdVal">0.0</span>
         </label>
-        <input type="range" id="samThreshold" min="-5.0" max="5.0" step="0.5" value="0.0" disabled>
+        <input type="range" id="samThreshold" min="-5.0" max="5.0" step="0.5" value="0.0" disabled="">
       </div>
 
       <div id="panelGlobal" style="display:none;">
@@ -139,7 +139,7 @@
           </span>
           <span id="thVal">—</span>
         </label>
-        <input type="range" id="threshold" min="0" max="255" value="40" disabled>
+        <input type="range" id="threshold" min="0" max="255" value="40" disabled="">
       </div>
 
       <div id="panelAdaptive">
@@ -151,7 +151,7 @@
           </span>
           <span id="adaptSizeVal">41</span>
         </label>
-        <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled>
+        <input type="range" id="adaptSize" min="5" max="151" step="2" value="41" disabled="">
 
         <label class="small" style="margin-top:6px;">
           <span data-i18n="lblSensitivity">רגישות / היסט (C):</span>
@@ -161,7 +161,7 @@
           </span>
           <span id="adaptCVal">7</span>
         </label>
-        <input type="range" id="adaptC" min="-30" max="30" step="1" value="7" disabled>
+        <input type="range" id="adaptC" min="-30" max="30" step="1" value="7" disabled="">
 
         <label class="small" style="margin-top:6px;">
           <span data-i18n="lblMinThBg">סף בהירות מינימלי לרקע:</span>
@@ -171,12 +171,12 @@
           </span>
           <span id="adaptMinThVal">15</span>
         </label>
-        <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled>
+        <input type="range" id="adaptMinTh" min="0" max="255" value="15" disabled="">
       </div>
 
       <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
         <label class="small" style="display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="enableMedian" disabled>
+          <input type="checkbox" id="enableMedian" disabled="">
           <span data-i18n="lblEnableMedian">סנן חציון (הסרת רעש נקודתי)</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
@@ -192,11 +192,11 @@
             </span>
             <span id="medianRadiusVal">3x3</span>
           </label>
-          <input type="range" id="medianRadius" min="3" max="5" step="2" value="3" disabled>
+          <input type="range" id="medianRadius" min="3" max="5" step="2" value="3" disabled="">
         </div>
 
         <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
-          <input type="checkbox" id="enableCLAHE" disabled>
+          <input type="checkbox" id="enableCLAHE" disabled="">
           <span data-i18n="lblEnableCLAHE">שיפור ניגודיות מקומי (CLAHE)</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
@@ -212,13 +212,13 @@
             </span>
             <span id="claheLimitVal">3.0</span>
           </label>
-          <input type="range" id="claheLimit" min="1.0" max="10.0" step="0.5" value="3.0" disabled>
+          <input type="range" id="claheLimit" min="1.0" max="10.0" step="0.5" value="3.0" disabled="">
         </div>
       </div>
 
       <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:8px;">
         <label class="small" style="display:flex; align-items:center; gap:6px;">
-          <input type="checkbox" id="fillHoles" checked disabled>
+          <input type="checkbox" id="fillHoles" checked="" disabled="">
           <span data-i18n="lblFillHoles">מילוי חורים קטנים בדפנות</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
@@ -234,11 +234,11 @@
             </span>
             <span id="holeSizeVal">50</span>
           </label>
-          <input type="range" id="holeSize" min="5" max="500" value="50" disabled>
+          <input type="range" id="holeSize" min="5" max="500" value="50" disabled="">
         </div>
 
         <label class="small" style="display:flex; align-items:center; gap:6px; margin-top:8px;">
-          <input type="checkbox" id="removeIslands" checked disabled>
+          <input type="checkbox" id="removeIslands" checked="" disabled="">
           <span data-i18n="lblRemoveIslands">הסרת איי רעש רקע</span>
           <span class="tooltip-container">
             <span class="tooltip-icon">?</span>
@@ -254,7 +254,7 @@
             </span>
             <span id="islandSizeVal">100</span>
           </label>
-          <input type="range" id="islandSize" min="10" max="1000" value="100" disabled>
+          <input type="range" id="islandSize" min="10" max="1000" value="100" disabled="">
         </div>
       </div>
 
@@ -276,7 +276,7 @@
           </span>
           <span id="mergeVal">—</span>
         </label>
-        <input type="range" id="mergeDist" min="2" max="80" value="25" disabled>
+        <input type="range" id="mergeDist" min="2" max="80" value="25" disabled="">
 
         <label class="small" style="margin-top:8px;">
           <span data-i18n="lblSpurLen">אורך מינימלי לזיז אמיתי (px):</span>
@@ -286,10 +286,23 @@
           </span>
           <span id="spurLenVal">—</span>
         </label>
-        <input type="range" id="spurLenSlider" min="5" max="100" value="20" disabled>
+        <input type="range" id="spurLenSlider" min="5" max="100" value="20" disabled="">
+
+        <label class="small" style="margin-top:8px;">
+          <span data-i18n="lblDistanceFitMode">חישוב מרחק ייחוס (התאמה למרחק):</span>
+          <span class="tooltip-container">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-content" data-i18n="hintTooltipDistanceFitMode"></span>
+          </span>
+        </label>
+        <select id="distanceFitMode" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;">
+          <option value="deg1" data-i18n="optFitLinear">משוואת קו ישר (דרגה 1)</option>
+          <option value="deg2" data-i18n="optFitPoly2">פולינום מדרגה שניה (דרגה 2)</option>
+          <option value="deg3" data-i18n="optFitPoly3">פולינום מדרגה שלישית (דרגה 3)</option>
+        </select>
 
         <div class="row" style="margin-top:8px;">
-          <button id="btnDetect" class="primary" style="width:100%;" disabled data-i18n="btnDetect">הרץ זיהוי מלא</button>
+          <button id="btnDetect" class="primary" style="width:100%;" disabled="" data-i18n="btnDetect">הרץ זיהוי מלא</button>
         </div>
         <div class="hint" id="hintClassical" data-i18n="hintClassical">
           תהליך קלאסי בלבד: סף על הערוץ הירוק ← דיקוק לשלד חד-פיקסלי (Zhang-Suen) ←
@@ -318,11 +331,11 @@
             <span class="tooltip-content" data-i18n="hintTooltipGeminiModel"></span>
           </span>
         </label>
-        <select id="geminiModel" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;" disabled>
+        <select id="geminiModel" style="width:100%;padding:6px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;" disabled="">
           <option data-i18n="optLoadModelsFirst">— טענו רשימת מודלים תחילה —</option>
         </select>
         <div class="row" style="margin-top:8px;">
-          <button id="btnDetectGemini" class="primary" style="width:100%;" disabled data-i18n="btnDetectGemini">זהה צמתים עם Gemini</button>
+          <button id="btnDetectGemini" class="primary" style="width:100%;" disabled="" data-i18n="btnDetectGemini">זהה צמתים עם Gemini</button>
         </div>
         <div class="hint" id="hintGemini" data-i18n="hintGemini">
           Gemini מקבל את התמונה ומתבקש להחזיר <b>רק</b> את מיקומי הצמתים
@@ -361,7 +374,7 @@
         <button id="finishRedraw" class="primary" data-i18n="finishRedraw">סיים ציור</button>
         <button id="cancelRedraw" data-i18n="cancelRedraw">בטל</button>
         <label class="small" style="display:inline-flex; align-items:center; gap:4px; margin:0; cursor:pointer;">
-          <input type="checkbox" id="chkSnapToJunctions" checked>
+          <input type="checkbox" id="chkSnapToJunctions" checked="">
           <span data-i18n="lblSnapToJunctions">הצמד לצמתים קרובים</span>
         </label>
       </div>
@@ -393,7 +406,7 @@
         <span class="switch-label" data-i18n="lblShowBinary">סף בינארי</span>
       </label>
       <label class="switch-container">
-        <input type="checkbox" id="switchShowMarkings" checked>
+        <input type="checkbox" id="switchShowMarkings" checked="">
         <span class="switch-slider"></span>
         <span class="switch-label" data-i18n="lblShowMarkings">הצג סימונים</span>
       </label>
@@ -426,7 +439,7 @@
       <div class="stat"><span data-i18n="lblAvgRatio">יחס ממוצע (undulation ratio)</span><b id="statAvg">—</b></div>
       <div class="stat"><span data-i18n="lblStdDev">סטיית תקן</span><b id="statStd">—</b></div>
       <div id="legend">
-        <span>1.0</span><div class="grad"></div><span>&ge;1.5</span>
+        <span>1.0</span><div class="grad"></div><span>≥1.5</span>
       </div>
       <div class="row" style="margin-top:10px; flex-wrap:wrap;">
         <button id="exportCurrent" data-i18n="exportCurrent">ייצוא CSV — תמונה זו</button>
@@ -481,7 +494,7 @@
 
       <!-- Chart 2: Cross-Image Comparison (Mean ± SD & Boxplot) -->
       <div class="block">
-        <h2 data-i18n="lblChartComparison">השוואה בין תמונות (Mean ± SD & Boxplot)</h2>
+        <h2 data-i18n="lblChartComparison">השוואה בין תמונות (Mean ± SD &amp; Boxplot)</h2>
         <div class="chart-container" style="position:relative; height:280px; width:100%;">
           <canvas id="chartComparison"></canvas>
         </div>

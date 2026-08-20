@@ -219,6 +219,7 @@ const els = {
   mergeDist: document.getElementById('mergeDist'),
   mergeVal: document.getElementById('mergeVal'),
   spurLenSlider: document.getElementById('spurLenSlider'),
+  distanceFitMode: document.getElementById('distanceFitMode'),
   spurLenVal: document.getElementById('spurLenVal'),
   tabClassical: document.getElementById('tabClassical'),
   tabGemini: document.getElementById('tabGemini'),
@@ -2420,18 +2421,147 @@ function traceEdges(skel, w, h, deg, nodes, pixelClusterId){
   }
 
   function registerEdge(n1, n2, path, incomplete){
-    const straight = n2 ? dist(n1.x,n1.y,n2.x,n2.y) : dist(n1.x,n1.y, path[path.length-1][0], path[path.length-1][1]);
+    const mode = getDistanceFitMode();
+    const fitDist = calcEdgeFitDistance(path, mode);
     const actual = pathLength(path);
     edges.push({
       id: 'e'+(edgeCounter++),
       n1: n1.id, n2: n2? n2.id : null,
-      path, length: actual, straight, ratio: straight>0? actual/straight : NaN,
+      path, length: actual, straight: fitDist, ratio: fitDist>0? actual/fitDist : NaN,
       manual:false, incomplete: !!incomplete,
       includeInStats: !incomplete,
     });
   }
 
   return edges;
+}
+
+
+function solveLinearSystem(A, b) {
+  let n = b.length;
+  let M = Array.from({length: n}, (_, i) => {
+    let row = new Float64Array(n + 1);
+    for (let j = 0; j < n; j++) row[j] = A[i][j];
+    row[n] = b[i];
+    return row;
+  });
+  for (let i = 0; i < n; i++) {
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+    }
+    let tmp = M[i]; M[i] = M[maxRow]; M[maxRow] = tmp;
+    if (Math.abs(M[i][i]) < 1e-12) continue;
+    for (let k = i + 1; k < n; k++) {
+      let c = -M[k][i] / M[i][i];
+      for (let j = i; j <= n; j++) {
+        if (i === j) M[k][j] = 0;
+        else M[k][j] += c * M[i][j];
+      }
+    }
+  }
+  let x = new Float64Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    if (Math.abs(M[i][i]) < 1e-12) x[i] = 0;
+    else {
+      x[i] = M[i][n] / M[i][i];
+      for (let k = i - 1; k >= 0; k--) {
+        M[k][n] -= M[k][i] * x[i];
+      }
+    }
+  }
+  return x;
+}
+
+function polyfit(t_vals, coords, deg) {
+  let m = deg + 1;
+  let n = t_vals.length;
+  if (n < m) {
+    deg = Math.max(1, n - 1);
+    m = deg + 1;
+  }
+  let A = Array.from({length: m}, () => new Float64Array(m));
+  let b = new Float64Array(m);
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < m; j++) {
+      let sum = 0;
+      for (let k = 0; k < n; k++) sum += Math.pow(t_vals[k], i + j);
+      A[i][j] = sum;
+    }
+    let sumB = 0;
+    for (let k = 0; k < n; k++) sumB += Math.pow(t_vals[k], i) * coords[k];
+    b[i] = sumB;
+  }
+  return solveLinearSystem(A, b);
+}
+
+function evalPolyDeriv(coeffs, t) {
+  let val = 0;
+  for (let i = 1; i < coeffs.length; i++) {
+    val += i * coeffs[i] * Math.pow(t, i - 1);
+  }
+  return val;
+}
+
+function calcEdgeFitDistance(path, mode) {
+  if (!path || path.length < 2) return 0;
+  if (mode === 'deg1' || mode === 'linear' || !mode) {
+    const p1 = path[0], p2 = path[path.length - 1];
+    return Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+  }
+  const deg = (mode === 'deg3' || mode === 'cubic') ? 3 : 2;
+  const n = path.length;
+  const t_vals = new Float64Array(n);
+  t_vals[0] = 0;
+  for (let i = 1; i < n; i++) {
+    const dx = path[i][0] - path[i-1][0];
+    const dy = path[i][1] - path[i-1][1];
+    t_vals[i] = t_vals[i-1] + Math.hypot(dx, dy);
+  }
+  const T = t_vals[n - 1];
+  if (T === 0) return 0;
+  const x_coords = path.map(p => p[0]);
+  const y_coords = path.map(p => p[1]);
+  const eff_deg = Math.min(deg, n - 1);
+  if (eff_deg < 1) return Math.hypot(path[n-1][0] - path[0][0], path[n-1][1] - path[0][1]);
+  const cx = polyfit(t_vals, x_coords, eff_deg);
+  const cy = polyfit(t_vals, y_coords, eff_deg);
+  const steps = Math.max(40, n * 4);
+  const dt = T / steps;
+  function speed(t) {
+    const dx = evalPolyDeriv(cx, t);
+    const dy = evalPolyDeriv(cy, t);
+    return Math.hypot(dx, dy);
+  }
+  let sum = speed(0) + speed(T);
+  for (let i = 1; i < steps; i++) {
+    const t = i * dt;
+    const w = (i % 2 === 1) ? 4 : 2;
+    sum += w * speed(t);
+  }
+  let len = sum * (dt / 3.0);
+  return Math.min(len, T);
+}
+
+
+function getDistanceFitMode() {
+  return els.distanceFitMode ? els.distanceFitMode.value : (state.distanceFitMode || 'deg1');
+}
+
+function recalculateEdgeDistances(rec) {
+  if (!rec || !rec.edges) return;
+  const mode = getDistanceFitMode();
+  rec.edges.forEach(e => {
+    if (!e.path || e.path.length < 2) return;
+    const fitDist = calcEdgeFitDistance(e.path, mode);
+    e.straight = fitDist;
+    e.ratio = fitDist > 0 ? e.length / fitDist : NaN;
+  });
+}
+
+function recalculateAllImageEdgeDistances() {
+  if (!state.images) return;
+  state.images.forEach(rec => recalculateEdgeDistances(rec));
 }
 
 function dist(x1,y1,x2,y2){ return Math.hypot(x2-x1,y2-y1); }
@@ -3161,7 +3291,8 @@ els.finishRedraw.onclick = ()=>{
   finalPath.push([n2_node.x, n2_node.y]);
 
   const length = pathLength(finalPath);
-  const straight = dist(n1_node.x, n1_node.y, n2_node.x, n2_node.y);
+  const mode = getDistanceFitMode();
+  const straight = calcEdgeFitDistance(finalPath, mode);
   const ratio = straight > 0 ? length / straight : NaN;
 
   // Always draw a new boundary from scratch
@@ -3313,11 +3444,14 @@ function addNodeOnEdge(rec, x, y){
 
   const n1 = rec.nodes.find(n=>n.id===edge.n1);
   const n2 = edge.n2 ? rec.nodes.find(n=>n.id===edge.n2) : null;
+  const mode = getDistanceFitMode();
+  const fit1 = calcEdgeFitDistance(path1, mode);
+  const fit2 = calcEdgeFitDistance(path2, mode);
   const e1 = { id:'e'+(rec.nextEdgeId++), n1:edge.n1, n2:newNode.id, path:path1,
-    length:pathLength(path1), straight: n1? Math.hypot(n1.x-newNode.x,n1.y-newNode.y):0, manual:true, incomplete:false, includeInStats:true };
+    length:pathLength(path1), straight: fit1, manual:true, incomplete:false, includeInStats:true };
   e1.ratio = e1.straight>0? e1.length/e1.straight : NaN;
   const e2 = { id:'e'+(rec.nextEdgeId++), n1:newNode.id, n2:edge.n2, path:path2,
-    length:pathLength(path2), straight: n2? Math.hypot(n2.x-newNode.x,n2.y-newNode.y): (edge.incomplete? edge.straight-e1.straight:0),
+    length:pathLength(path2), straight: fit2,
     manual:true, incomplete: edge.incomplete, includeInStats: edge.includeInStats !== undefined ? edge.includeInStats : !edge.incomplete };
   e2.ratio = e2.straight>0? e2.length/e2.straight : NaN;
   rec.edges = rec.edges.filter(e=>e.id!==edge.id);
@@ -3337,7 +3471,8 @@ function removeNode(rec, nodeId){
     let p2 = e2.path.slice(); if(e2.n1===nodeId){ /* already starts at node */ } else { p2 = p2.slice().reverse(); }
     const merged = p1.concat(p2.slice(1));
     const n1 = rec.nodes.find(n=>n.id===na), n2 = rec.nodes.find(n=>n.id===nb);
-    const straight = (n1&&n2)? Math.hypot(n1.x-n2.x,n1.y-n2.y) : Math.max(e1.straight,e2.straight);
+    const mode = getDistanceFitMode();
+    const straight = calcEdgeFitDistance(merged, mode);
     const newEdge = { id:'e'+(rec.nextEdgeId++), n1:na, n2:nb, path:merged,
       length:pathLength(merged), straight, manual:true, incomplete:false, includeInStats:true };
     newEdge.ratio = straight>0? newEdge.length/straight : NaN;

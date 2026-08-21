@@ -1,1 +1,23 @@
-PLACEHOLDER
+/* Restored base from a599617 + upload-zone click-target fix */
+@import url("https://cdn.jsdelivr.net/gh/baobabprince/gitith@a599617dd581051696178363e2df147e2b56fef3/styles.css");
+
+/* Contain the absolute file input so it cannot cover buttons below */
+.upload-zone {
+  position: relative !important;
+  overflow: hidden !important;
+}
+.upload-zone input[type=file] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  z-index: 1 !important;
+}
+/* Keep session / example buttons clickable above any absolute layers */
+#blockImages > button,
+#blockImages > .row {
+  position: relative !important;
+  z-index: 2 !important;
+}

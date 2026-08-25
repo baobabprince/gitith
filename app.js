@@ -4307,14 +4307,13 @@ async function generatePDFReport(imagesToExport) {
     pdf.text('Group Statistics Summary', margin, y);
     y += 6;
 
-    pdf.setFillColor(245, 248, 246);
-    pdf.setDrawColor(200, 220, 210);
-
     groupStatsList.forEach(gst => {
       if (y + 30 > pageHeight) {
         pdf.addPage();
         y = margin;
       }
+      pdf.setFillColor(245, 248, 246);
+      pdf.setDrawColor(200, 220, 210);
       pdf.roundedRect(margin, y, pageWidth - 2 * margin, 30, 2, 2, 'FD');
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
